@@ -15,23 +15,34 @@
         name: string,
         files: Array<Filedata>
     }
-    const getFolderName = () => { 
+    const getCurrentFolder = () => { 
         invoke("get_current_folder", {}).then((data: FolderData) => {
-            console.log(data)
+            console.log("Getting current folder", data)
             folder_name = data.name
             contents = data.files
         })
     }
 
     const changeDirectory = (path: string) => {
-        console.log(path)
+        contents = []
+        invoke("move_to_folder", {folderPath: path}).then(() => {
+            getCurrentFolder()
+        })
+    }
+    
+    const changeDirectoryToParent = () => {
+        contents = []
+        invoke("move_to_parent_folder").then(() => {
+            getCurrentFolder()
+        })
     }
 
-    getFolderName()
+    getCurrentFolder()
 </script>
 
 <div>
     <h1>{folder_name}</h1>
+    <button on:click={changeDirectoryToParent}>Go Back</button>
     <ul>
         {#each contents as content}
             <li><SubDir folderdata={content} onClick={changeDirectory}/></li>

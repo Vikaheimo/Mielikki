@@ -1,7 +1,7 @@
 use derive_more::{Display, Error};
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use std::{
-    fs::{self, DirEntry},
+    fs,
     path::{Path, PathBuf},
 };
 
@@ -13,7 +13,7 @@ pub struct CurrentDir {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct FolderData {
     pub name: String,
-    pub files: Vec<FileData>
+    pub files: Vec<FileData>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -27,7 +27,7 @@ pub struct FileData {
 pub enum FileType {
     Folder,
     File,
-    Link
+    Link,
 }
 
 impl From<std::fs::FileType> for FileType {
@@ -74,27 +74,49 @@ impl CurrentDir {
 
     pub fn get_siblings(&self) -> Result<Vec<FileData>, CurrentDirError> {
         let mut siblings = vec![];
-        for entry in fs::read_dir(&self.path).map_err(|_| CurrentDirError::CannotReadDir)?.filter_map(|v| v.ok()) {
-            let name = entry.file_name().to_str().ok_or(CurrentDirError::IsntUTF8)?.to_owned();
+        for entry in fs::read_dir(&self.path)
+            .map_err(|_| CurrentDirError::CannotReadDir)?
+            .filter_map(|v| v.ok())
+        {
+            let name = entry
+                .file_name()
+                .to_str()
+                .ok_or(CurrentDirError::IsntUTF8)?
+                .to_owned();
             let path = entry.path();
-            let filetype = FileType::from(entry.file_type().map_err(|_| CurrentDirError::CannotReadDir)?);
+            let filetype = FileType::from(
+                entry
+                    .file_type()
+                    .map_err(|_| CurrentDirError::CannotReadDir)?,
+            );
 
-            siblings.push(FileData { name, path, filetype })
+            siblings.push(FileData {
+                name,
+                path,
+                filetype,
+            })
         }
-        Ok(siblings) 
+        Ok(siblings)
     }
 
     pub fn get_current_folder_name(&self) -> Result<&str, CurrentDirError> {
-        self.path.file_name().ok_or(CurrentDirError::CannotReadDir)?.to_str().ok_or(CurrentDirError::IsntUTF8)
+        self.path
+            .file_name()
+            .ok_or(CurrentDirError::CannotReadDir)?
+            .to_str()
+            .ok_or(CurrentDirError::IsntUTF8)
     }
 
     pub fn get_folder_data(&self) -> Result<FolderData, CurrentDirError> {
         let siblings = self.get_siblings()?;
         let name = self.get_current_folder_name()?.to_owned();
 
-        Ok(FolderData { name, files: siblings })
+        Ok(FolderData {
+            name,
+            files: siblings,
+        })
     }
-    
+
     pub fn parse_path_to_absolute(path: &Path) -> Result<PathBuf, CurrentDirError> {
         fs::canonicalize(path).map_err(|_| CurrentDirError::PathCannotBeMadeAbsolute)
     }

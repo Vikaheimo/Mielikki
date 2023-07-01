@@ -22,7 +22,7 @@
 </script>
 
 <div on:click={handleClick}>
-    <img src={imgSrc} alt="Italian Trulli">
+    <img src={imgSrc} alt="OOPS">
     <div>
         <h2>{name}</h2>
     </div>
