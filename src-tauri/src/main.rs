@@ -25,7 +25,7 @@ fn move_to_folder(
 }
 
 #[tauri::command]
-fn move_to_parent_folder(state: tauri::State<OuterCurrentDir>) -> Result<(), CurrentDirError> {
+fn move_to_parent_folder(state: tauri::State<OuterCurrentDir>) -> Result<String, CurrentDirError> {
     let mut state_guard = state.0.lock().unwrap();
 
     state_guard.move_to_parent_dir()

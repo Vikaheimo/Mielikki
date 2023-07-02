@@ -60,10 +60,16 @@ impl CurrentDir {
         CurrentDir { path: parsed_path }
     }
 
-    pub fn move_to_parent_dir(&mut self) -> Result<(), CurrentDirError> {
+    /// Returns the old path as the ok type
+    pub fn move_to_parent_dir(&mut self) -> Result<String, CurrentDirError> {
+        let old_path = self
+            .path
+            .to_str()
+            .ok_or(CurrentDirError::IsntUTF8)?
+            .to_string();
         let parent_path = self.path.parent().ok_or(CurrentDirError::AlreadyAtRoot)?;
         self.path = parent_path.to_owned();
-        Ok(())
+        Ok(old_path)
     }
 
     pub fn move_to_dir(&mut self, path: &Path) -> Result<(), CurrentDirError> {

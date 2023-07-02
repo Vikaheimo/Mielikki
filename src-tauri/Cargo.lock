@@ -1808,7 +1808,7 @@ dependencies = [
 
 [[package]]
 name = "mielikki"
-version = "0.0.0"
+version = "0.0.1"
 dependencies = [
  "derive_more",
  "serde",

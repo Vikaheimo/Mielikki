@@ -1,6 +1,6 @@
 [package]
 name = "mielikki"
-version = "0.0.0"
+version = "0.0.1"
 description = "A file manager that aims to be faster than File Explorer"
 authors = ["Vili Ikäheimo <vili.vikaheim@gmail.com>"]
 edition = "2021"

@@ -1,11 +1,14 @@
 <script lang="ts">
     import SearchBar from './SearchBar.svelte';
     export let backButtonOnClick: () => void;
-    export let isBackDisabled: () => boolean;
+    export let isBackDisabled: boolean = false;
+    export let forwardButtonOnClick: () => void;
+    export let isforwardDisabled: boolean = true;
 </script>
 
 <nav>
-    <button disabled={isBackDisabled()} on:click={backButtonOnClick}>&#10092;</button>
+    <button disabled={isBackDisabled} on:click={backButtonOnClick}>&#10092;</button>
+    <button disabled={isforwardDisabled} on:click={forwardButtonOnClick}>&#10093;</button>
     <div><SearchBar /></div>
 </nav>
 

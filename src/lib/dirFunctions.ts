@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/tauri';
-import directoryStore from './stores/DirectoryStore';
+import directoryStore, { popForward, addForward } from './stores/DirectoryStore';
 
 export type Filedata = {
     name: string;
@@ -40,15 +40,22 @@ export const changeDirectory = (path: string) => {
 };
 
 export const changeToParentDirectory = () => {
-    invoke('move_to_parent_folder').then(() => {
+    invoke('move_to_parent_folder').then((path: string) => {
         updateCurrentDir();
+        addForward(path);
     });
 };
 
+/** Doesnt work currently*/
 export const currentDirIsRoot = (): boolean => {
     let isRoot = false;
     invoke('current_dir_is_root').then((value: boolean) => {
         isRoot = value;
     });
     return isRoot;
+};
+
+export const moveForwardDir = () => {
+    const newDir = popForward();
+    changeDirectory(newDir);
 };
