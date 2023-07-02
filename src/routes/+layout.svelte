@@ -26,11 +26,7 @@
     isforwardDisabled={forward.length === 0}
     forwardButtonOnClick={moveForwardDir}
 />
-<h1>kjadskljadskjldas</h1>
-{#each forward as f}
-    <h1>asdasdsaddsaasdasd</h1>
-    {f}
-{/each}
+
 <main>
     <slot />
 </main>

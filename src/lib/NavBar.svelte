@@ -7,9 +7,13 @@
 </script>
 
 <nav>
-    <button disabled={isBackDisabled} on:click={backButtonOnClick}>&#10092;</button>
-    <button disabled={isforwardDisabled} on:click={forwardButtonOnClick}>&#10093;</button>
-    <div><SearchBar /></div>
+    <div class="buttons">
+        <button disabled={isBackDisabled} on:click={backButtonOnClick}>&#10092;</button>
+        <button disabled={isforwardDisabled} on:click={forwardButtonOnClick}>&#10093;</button>
+    </div>
+    <div class="searchbar">
+        <SearchBar />
+    </div>
 </nav>
 
 <style>
@@ -25,13 +29,16 @@
         color: #eaeaea;
         border: black solid 1px;
         border-radius: 5px;
-        grid-column: 1 / span 1;
         width: 2rem;
         height: 2rem;
         text-align: center;
     }
 
-    div {
+    .searchbar {
         grid-column: 5 / span 3;
+    }
+
+    .buttons {
+        grid-column: 1 / span 1;
     }
 </style>
