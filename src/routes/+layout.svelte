@@ -1,7 +1,7 @@
 <script lang="ts">
     import { changeToParentDirectory, moveForwardDir } from '$lib/dirFunctions';
     import directoryStore from '$lib/stores/DirectoryStore';
-    import '../global.css';
+
     import NavBar from '$lib/NavBar.svelte';
     import { onDestroy } from 'svelte';
 
