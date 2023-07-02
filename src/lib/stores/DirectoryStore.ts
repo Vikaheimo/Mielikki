@@ -5,10 +5,12 @@ type DirectoryStore = Writable<{
     dirName: string;
     forward: string[];
     siblings: Filedata[];
+    isAtRoot: boolean;
 }>;
 const directoryStore: DirectoryStore = writable({
     dirName: '',
     forward: [],
+    isAtRoot: false,
     siblings: [
         {
             name: '',
@@ -23,6 +25,7 @@ export const addForward = (new_path: string) => {
         return {
             dirName: data.dirName,
             siblings: data.siblings,
+            isAtRoot: data.isAtRoot,
             forward: [...data.forward, new_path]
         };
     });
@@ -35,6 +38,7 @@ export const popForward = (): string => {
         return {
             dirName: data.dirName,
             siblings: data.siblings,
+            isAtRoot: data.isAtRoot,
             forward: [...data.forward.slice(0, data.forward.length - 1)]
         };
     });

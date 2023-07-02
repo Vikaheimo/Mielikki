@@ -1,27 +1,24 @@
 <script lang="ts">
-    import { currentDirIsRoot, changeToParentDirectory, moveForwardDir } from '$lib/dirFunctions';
+    import { changeToParentDirectory, moveForwardDir } from '$lib/dirFunctions';
     import directoryStore from '$lib/stores/DirectoryStore';
     import '../global.css';
     import NavBar from '$lib/NavBar.svelte';
     import { onDestroy } from 'svelte';
 
     let forward: string[] = [];
+    let isAtRoot = false;
     let unSubscribe = directoryStore.subscribe((data) => {
         forward = data.forward;
+        isAtRoot = data.isAtRoot;
     });
 
     onDestroy(() => {
         unSubscribe();
     });
-
-    const cannotMoveUp = (): boolean => {
-        console.log('forward data:', forward);
-        return forward.length === 0;
-    };
 </script>
 
 <NavBar
-    isBackDisabled={currentDirIsRoot()}
+    isBackDisabled={isAtRoot}
     backButtonOnClick={changeToParentDirectory}
     isforwardDisabled={forward.length === 0}
     forwardButtonOnClick={moveForwardDir}

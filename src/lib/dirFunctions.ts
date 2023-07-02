@@ -10,6 +10,7 @@ export type Filedata = {
 export type FolderData = {
     name: string;
     files: Filedata[];
+    is_at_root: boolean;
 };
 
 export const updateCurrentDir = (): void => {
@@ -18,41 +19,40 @@ export const updateCurrentDir = (): void => {
         return {
             dirName: current.dirName,
             forward: current.forward,
+            isAtRoot: current.isAtRoot,
             siblings: []
         };
     });
 
-    invoke('get_current_folder', {}).then((data: FolderData) => {
-        directoryStore.update((current) => {
-            return {
-                dirName: data.name,
-                forward: current.forward,
-                siblings: data.files
-            };
-        });
-    });
+    invoke('get_current_folder', {})
+        .then((data: FolderData) => {
+            directoryStore.update((current) => {
+                return {
+                    dirName: data.name,
+                    forward: current.forward,
+                    isAtRoot: data.is_at_root,
+                    siblings: data.files
+                };
+            });
+        })
+        .catch((err) => console.error(err));
 };
 
 export const changeDirectory = (path: string) => {
-    invoke('move_to_folder', { folderPath: path }).then(() => {
-        updateCurrentDir();
-    });
+    invoke('move_to_folder', { folderPath: path })
+        .then(() => {
+            updateCurrentDir();
+        })
+        .catch((err) => console.error(err));
 };
 
 export const changeToParentDirectory = () => {
-    invoke('move_to_parent_folder').then((path: string) => {
-        updateCurrentDir();
-        addForward(path);
-    });
-};
-
-/** Doesnt work currently*/
-export const currentDirIsRoot = (): boolean => {
-    let isRoot = false;
-    invoke('current_dir_is_root').then((value: boolean) => {
-        isRoot = value;
-    });
-    return isRoot;
+    invoke('move_to_parent_folder')
+        .then((path: string) => {
+            updateCurrentDir();
+            addForward(path);
+        })
+        .catch((err) => console.error(err));
 };
 
 export const moveForwardDir = () => {

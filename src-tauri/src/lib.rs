@@ -14,6 +14,7 @@ pub struct CurrentDir {
 pub struct FolderData {
     pub name: String,
     pub files: Vec<FileData>,
+    pub is_at_root: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -113,9 +114,7 @@ impl CurrentDir {
     pub fn get_current_folder_name(&self) -> Result<&str, CurrentDirError> {
         self.path
             .file_name()
-            .ok_or(CurrentDirError::CannotReadDir {
-                dir_name: "current_folder".to_owned(),
-            })?
+            .unwrap_or(self.path.as_os_str())
             .to_str()
             .ok_or(CurrentDirError::IsntUTF8)
     }
@@ -127,6 +126,7 @@ impl CurrentDir {
         Ok(FolderData {
             name,
             files: siblings,
+            is_at_root: self.current_dir_is_root(),
         })
     }
 
