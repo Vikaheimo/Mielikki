@@ -1,7 +1,7 @@
 <script lang="ts">
-	import Dir from '../lib/CurrentDir.svelte';
+    import Dir from '../lib/CurrentDir.svelte';
 </script>
 
 <main class="container">
-	<Dir />
+    <Dir />
 </main>

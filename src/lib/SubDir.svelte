@@ -1,50 +1,50 @@
 <script lang="ts">
-	type Filedata = {
-		name: String;
-		path: string;
-		filetype: string;
-	};
+    import { changeDirectory } from './dirFunctions';
+    type Filedata = {
+        name: String;
+        path: string;
+        filetype: string;
+    };
 
-	export let folderdata: Filedata;
-	export let onClick: (path: string) => void;
+    export let folderdata: Filedata;
 
-	let filetype = folderdata.filetype;
-	let path = folderdata.path;
-	let name = folderdata.name;
+    let filetype = folderdata.filetype;
+    let path = folderdata.path;
+    let name = folderdata.name;
 
-	let imgSrc = `/images/${filetype}.png`;
-	const handleClick = () => {
-		if (filetype == 'File') {
-			return;
-		}
-		onClick(path);
-	};
+    let imgSrc = `/images/${filetype}.png`;
+    const handleClick = () => {
+        if (filetype == 'File') {
+            return;
+        }
+        changeDirectory(path);
+    };
 </script>
 
 <!-- svelte-ignore a11y-click-events-have-key-events -->
 <!-- svelte-ignore a11y-no-static-element-interactions -->
 <div on:click={handleClick}>
-	<img src={imgSrc} alt="OOPS" />
-	<div>
-		<h2>{name}</h2>
-	</div>
+    <img src={imgSrc} alt="OOPS" />
+    <div>
+        <h2>{name}</h2>
+    </div>
 </div>
 
 <style>
-	img {
-		width: 100%;
-		max-width: 60px;
-		display: inline;
-	}
-	div div {
-		padding-left: 0.5rem;
-		display: inline;
-	}
-	div {
-		display: flex;
-		align-items: center;
-	}
-	h2 {
-		display: inline;
-	}
+    img {
+        width: 100%;
+        max-width: 60px;
+        display: inline;
+    }
+    div div {
+        padding-left: 0.5rem;
+        display: inline;
+    }
+    div {
+        display: flex;
+        align-items: center;
+    }
+    h2 {
+        display: inline;
+    }
 </style>

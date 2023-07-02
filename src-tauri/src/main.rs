@@ -31,13 +31,21 @@ fn move_to_parent_folder(state: tauri::State<OuterCurrentDir>) -> Result<(), Cur
     state_guard.move_to_parent_dir()
 }
 
+#[tauri::command]
+fn current_dir_is_root(state: tauri::State<OuterCurrentDir>) -> bool {
+    let state_guard = state.0.lock().unwrap();
+
+    state_guard.current_dir_is_root()
+}
+
 fn main() {
     tauri::Builder::default()
         .manage(OuterCurrentDir(Mutex::new(CurrentDir::new(Path::new(".")))))
         .invoke_handler(tauri::generate_handler![
             get_current_folder,
             move_to_folder,
-            move_to_parent_folder
+            move_to_parent_folder,
+            current_dir_is_root
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

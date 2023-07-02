@@ -42,11 +42,14 @@ impl From<std::fs::FileType> for FileType {
     }
 }
 
-#[derive(Debug, Error, Display, Serialize, Deserialize)]
+#[derive(Debug, Display, Serialize, Deserialize, Error)]
 pub enum CurrentDirError {
     AlreadyAtRoot,
     PathCannotBeMadeAbsolute,
-    CannotReadDir,
+    #[display(fmt = "Directory \"{}\" cannot be found", dir_name)]
+    CannotReadDir {
+        dir_name: String,
+    },
     CannotMoveToFile,
     IsntUTF8,
 }
@@ -75,7 +78,9 @@ impl CurrentDir {
     pub fn get_siblings(&self) -> Result<Vec<FileData>, CurrentDirError> {
         let mut siblings = vec![];
         for entry in fs::read_dir(&self.path)
-            .map_err(|_| CurrentDirError::CannotReadDir)?
+            .map_err(|err| CurrentDirError::CannotReadDir {
+                dir_name: err.to_string(),
+            })?
             .filter_map(|v| v.ok())
         {
             let name = entry
@@ -84,11 +89,11 @@ impl CurrentDir {
                 .ok_or(CurrentDirError::IsntUTF8)?
                 .to_owned();
             let path = entry.path();
-            let filetype = FileType::from(
-                entry
-                    .file_type()
-                    .map_err(|_| CurrentDirError::CannotReadDir)?,
-            );
+            let filetype = FileType::from(entry.file_type().map_err(|err| {
+                CurrentDirError::CannotReadDir {
+                    dir_name: err.to_string(),
+                }
+            })?);
 
             siblings.push(FileData {
                 name,
@@ -102,7 +107,9 @@ impl CurrentDir {
     pub fn get_current_folder_name(&self) -> Result<&str, CurrentDirError> {
         self.path
             .file_name()
-            .ok_or(CurrentDirError::CannotReadDir)?
+            .ok_or(CurrentDirError::CannotReadDir {
+                dir_name: "current_folder".to_owned(),
+            })?
             .to_str()
             .ok_or(CurrentDirError::IsntUTF8)
     }
@@ -119,5 +126,9 @@ impl CurrentDir {
 
     pub fn parse_path_to_absolute(path: &Path) -> Result<PathBuf, CurrentDirError> {
         fs::canonicalize(path).map_err(|_| CurrentDirError::PathCannotBeMadeAbsolute)
+    }
+
+    pub fn current_dir_is_root(&self) -> bool {
+        self.path.parent().is_none()
     }
 }
