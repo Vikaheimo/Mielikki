@@ -2,7 +2,7 @@ use super::{CurrentDirError, FileData};
 use std::{
     fs::File,
     io::{BufReader, BufWriter},
-    path::PathBuf,
+    path::{Path, PathBuf},
 };
 use walkdir::WalkDir;
 
@@ -13,7 +13,7 @@ pub struct FileCache {
 
 impl FileCache {
     pub fn new(location: PathBuf) -> Result<Self, CurrentDirError> {
-        // Check that file can be opened othervise try to create new file
+        // Check that file can be opened otherwise try to create new file
         if location.exists() && File::open(&location).is_ok() {
             return Ok(FileCache {
                 file_location: location,
@@ -29,15 +29,16 @@ impl FileCache {
     }
 
     pub fn find_file(&self, name: &str) -> Result<Option<Vec<FileData>>, CurrentDirError> {
-        let buf_reader = BufReader::new(
-            File::options()
-                .read(true)
-                .open(&self.file_location)
-                .map_err(|_| CurrentDirError::CannotReadDir {
-                    dir_name: self.file_location.to_string_lossy().to_string(),
-                })?,
-        );
+        let file = File::options()
+            .read(true)
+            .open(&self.file_location)
+            .map_err(|_| CurrentDirError::CannotReadDir {
+                dir_name: self.file_location.to_string_lossy().to_string(),
+            })?;
+
+        let buf_reader = BufReader::new(file);
         let mut csv_reader = csv::Reader::from_reader(buf_reader);
+
         let data = csv_reader
             .deserialize::<FileData>()
             .map(|f| f.map_err(|_| CurrentDirError::CannotSerialize))
@@ -56,44 +57,40 @@ impl FileCache {
         self.find_file("something").is_ok()
     }
 
-    /// Function to update filecache
     pub fn update_filecache(&self) -> Result<(), CurrentDirError> {
-        let buf_writer = BufWriter::new(
-            File::options()
-                .write(true)
-                .open(&self.file_location)
-                .map_err(|_| CurrentDirError::CannotReadDir {
-                    dir_name: self.file_location.to_string_lossy().to_string(),
-                })?,
-        );
+        let tmp_file_path = Path::new("cache.tmp");
+        let tempfile =
+            File::create(tmp_file_path).map_err(|_| CurrentDirError::CannotCreateFile)?;
+
+        let buf_writer = BufWriter::new(tempfile);
         let mut csv_writer = csv::Writer::from_writer(buf_writer);
+
         for entry in WalkDir::new("/").into_iter().filter_map(|e| e.ok()) {
             let filedata = FileData::from(entry);
             csv_writer
                 .serialize(filedata)
                 .map_err(|_| CurrentDirError::CannotReadDir {
                     dir_name: self.file_location.to_string_lossy().to_string(),
-                })? 
+                })?
         }
-
+        csv_writer.flush().map_err(|_| CurrentDirError::CannotWriteToFile)?;
+        std::fs::rename(tmp_file_path, &self.file_location)
+            .map_err(|_| CurrentDirError::CannotCreateFile)?;
         Ok(())
     }
 }
 
 mod test {
-    
-    
-
     #[test]
     #[ignore]
     fn test_file_caching() {
         let fc = super::FileCache::new(std::path::Path::new("asd").to_path_buf()).unwrap();
-        fc.update_filecache(true).unwrap();
+        fc.update_filecache().unwrap();
     }
 
     #[test]
     #[ignore]
-    fn test_fiding_file() {
+    fn test_finding_file() {
         let fc = super::FileCache::new(std::path::Path::new("asd").to_path_buf()).unwrap();
         let data = fc.find_file("asd").unwrap();
         println!("data: {:?}", data);

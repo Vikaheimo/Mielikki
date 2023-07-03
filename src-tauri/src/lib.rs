@@ -66,7 +66,9 @@ pub enum CurrentDirError {
     },
     CannotMoveToFile,
     IsntUTF8,
-    CannotSerialize
+    CannotSerialize,
+    CannotCreateFile,
+    CannotWriteToFile,
 }
 
 impl CurrentDir {
@@ -110,9 +112,11 @@ impl CurrentDir {
                 .ok_or(CurrentDirError::IsntUTF8)?
                 .to_owned();
             let path = entry.path();
-            let filetype = FileType::from(entry.file_type().map_err(|_| {
-                CurrentDirError::CannotGetFileType
-            })?);
+            let filetype = FileType::from(
+                entry
+                    .file_type()
+                    .map_err(|_| CurrentDirError::CannotGetFileType)?,
+            );
 
             siblings.push(FileData {
                 name,
