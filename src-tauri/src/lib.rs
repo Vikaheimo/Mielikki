@@ -1,3 +1,5 @@
+pub mod filecache;
+
 use derive_more::{Display, Error};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -24,6 +26,16 @@ pub struct FileData {
     filetype: FileType,
 }
 
+impl From<walkdir::DirEntry> for FileData {
+    fn from(value: walkdir::DirEntry) -> Self {
+        FileData {
+            name: value.file_name().to_string_lossy().to_string(),
+            path: value.path().to_path_buf(),
+            filetype: FileType::from(value.file_type()),
+        }
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub enum FileType {
     Folder,
@@ -47,12 +59,14 @@ impl From<std::fs::FileType> for FileType {
 pub enum CurrentDirError {
     AlreadyAtRoot,
     PathCannotBeMadeAbsolute,
+    CannotGetFileType,
     #[display(fmt = "Directory \"{}\" cannot be found", dir_name)]
     CannotReadDir {
         dir_name: String,
     },
     CannotMoveToFile,
     IsntUTF8,
+    CannotSerialize
 }
 
 impl CurrentDir {
@@ -96,10 +110,8 @@ impl CurrentDir {
                 .ok_or(CurrentDirError::IsntUTF8)?
                 .to_owned();
             let path = entry.path();
-            let filetype = FileType::from(entry.file_type().map_err(|err| {
-                CurrentDirError::CannotReadDir {
-                    dir_name: err.to_string(),
-                }
+            let filetype = FileType::from(entry.file_type().map_err(|_| {
+                CurrentDirError::CannotGetFileType
             })?);
 
             siblings.push(FileData {
