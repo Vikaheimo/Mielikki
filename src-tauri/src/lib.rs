@@ -19,7 +19,7 @@ pub struct FolderData {
     pub is_at_root: bool,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct FileData {
     name: String,
     path: PathBuf,
@@ -36,7 +36,17 @@ impl From<walkdir::DirEntry> for FileData {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+impl FileData {
+    pub fn from_cachedfile_with_string(cached_file: &filecache::CachedFile, name: String) -> Self {
+        FileData {
+            name,
+            path: cached_file.path.to_owned(),
+            filetype: cached_file.filetype,
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
 pub enum FileType {
     Folder,
     File,
@@ -152,5 +162,27 @@ impl CurrentDir {
 
     pub fn current_dir_is_root(&self) -> bool {
         self.path.parent().is_none()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::filecache::CachedFile;
+    use super::{FileData, FileType};
+    use std::path::Path;
+
+    #[test]
+    fn filedata_to_cachedfile() {
+        let cf = CachedFile {
+            path: Path::new("test").to_owned(),
+            filetype: FileType::Folder,
+        };
+        let got = FileData::from_cachedfile_with_string(&cf, "test".to_owned());
+        let model = FileData {
+            name: "test".to_owned(),
+            path: Path::new("test").to_owned(),
+            filetype: FileType::Folder,
+        };
+        assert_eq!(got, model)
     }
 }

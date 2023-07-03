@@ -1,27 +1,34 @@
 use super::{CurrentDirError, FileData, FileType};
+use multimap::MultiMap;
 use std::{
     fs::File,
     io::{BufReader, BufWriter},
-    path::{Path, PathBuf}, sync::{Arc, Mutex},
+    path::{Path, PathBuf},
+    sync::Mutex,
 };
 use walkdir::WalkDir;
-use multimap::MultiMap;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct CachedFile {
-    path: PathBuf,
-    filetype: FileType,
+    pub path: PathBuf,
+    pub filetype: FileType,
 }
 
 #[derive(Debug)]
 pub struct FileCache {
     file_location: PathBuf,
-    cache: Arc<Mutex<MultiMap<String, CachedFile>>>
+    cache: Mutex<MultiMap<String, CachedFile>>,
 }
 
 impl CachedFile {
     pub fn from_filedata(data: FileData) -> (String, CachedFile) {
-        (data.name, CachedFile{ path: data.path, filetype: data.filetype })
+        (
+            data.name,
+            CachedFile {
+                path: data.path,
+                filetype: data.filetype,
+            },
+        )
     }
 }
 
@@ -30,7 +37,7 @@ impl FileCache {
         // Check that file can be opened, otherwise try to create new file
         let fc = FileCache {
             file_location: location.clone(),
-            cache: Arc::new(Mutex::new(MultiMap::new()))
+            cache: Mutex::new(MultiMap::new()),
         };
 
         if fc.check_file_parses() {
@@ -43,8 +50,15 @@ impl FileCache {
         Ok(fc)
     }
 
-    pub fn find_file(&self, name: &str) -> Result<Option<Vec<FileData>>, CurrentDirError> {
-        unimplemented!()
+    pub fn find_file(&self, name: &str) -> Option<Vec<FileData>> {
+        let cache = self.cache.lock().unwrap();
+        Some(
+            cache
+                .get_vec(name)?
+                .iter()
+                .map(|f| FileData::from_cachedfile_with_string(f, name.to_owned()))
+                .collect(),
+        )
     }
     pub fn update_memory_cache_from_file(&self) -> Result<(), CurrentDirError> {
         let file = File::options()
@@ -58,23 +72,38 @@ impl FileCache {
         let mut csv_reader = csv::Reader::from_reader(buf_reader);
         let new_data = csv_reader
             .deserialize::<FileData>()
-            .map(|f| {
-                match f {
-                    Ok(data) => Ok(CachedFile::from_filedata(data)),
-                    Err(_error) =>  Err(CurrentDirError::CannotSerialize)
-                }
-            }).collect::<Result<MultiMap<String, CachedFile>,CurrentDirError>>()?;
-            
-        let cache_lock = self.cache.clone();
-        let mut data = cache_lock.lock().unwrap();
+            .map(|f| match f {
+                Ok(data) => Ok(CachedFile::from_filedata(data)),
+                Err(_error) => Err(CurrentDirError::CannotSerialize),
+            })
+            .collect::<Result<MultiMap<String, CachedFile>, CurrentDirError>>()?;
+
+        let mut data = self.cache.lock().unwrap();
         *data = new_data;
 
         Ok(())
     }
 
     /// Function to check that file is formatted properly
-    pub fn check_file_parses(&self) -> bool {
-        self.find_file("something").is_ok()
+    fn check_file_parses(&self) -> bool {
+        let file = File::options()
+            .read(true)
+            .open(&self.file_location)
+            .map_err(|_| CurrentDirError::CannotReadDir {
+                dir_name: self.file_location.to_string_lossy().to_string(),
+            });
+        if file.is_err() {
+            return false;
+        }
+
+        let buf_reader = BufReader::new(file.unwrap());
+        let mut csv_reader = csv::Reader::from_reader(buf_reader);
+        for entry in csv_reader.deserialize::<FileData>() {
+            if entry.is_err() {
+                return false;
+            }
+        }
+        true
     }
 
     pub fn update_filecache_file(&self) -> Result<(), CurrentDirError> {
@@ -93,20 +122,34 @@ impl FileCache {
                     dir_name: self.file_location.to_string_lossy().to_string(),
                 })?
         }
-        csv_writer.flush().map_err(|_| CurrentDirError::CannotWriteToFile)?;
+        csv_writer
+            .flush()
+            .map_err(|_| CurrentDirError::CannotWriteToFile)?;
         std::fs::rename(tmp_file_path, &self.file_location)
             .map_err(|_| CurrentDirError::CannotCreateFile)?;
         Ok(())
     }
 }
 
+#[cfg(test)]
 mod test {
+    use super::{CachedFile, FileData, FileType};
+    use std::path::Path;
+
     #[test]
-    #[ignore]
-    fn test_finding_file() {
-        let fc = super::FileCache::new(std::path::Path::new("asd").to_path_buf()).unwrap();
-        let data = fc.find_file("asd").unwrap();
-        println!("data: {:?}", data);
-        panic!()
+    fn cachedfile_from_fildata() {
+        let fd = FileData {
+            name: "test".to_owned(),
+            path: Path::new("test").to_owned(),
+            filetype: FileType::Folder,
+        };
+        let model = (
+            "test".to_owned(),
+            CachedFile {
+                path: Path::new("test").to_owned(),
+                filetype: FileType::Folder,
+            },
+        );
+        assert_eq!(model, CachedFile::from_filedata(fd));
     }
 }
