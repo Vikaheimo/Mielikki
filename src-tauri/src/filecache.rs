@@ -52,18 +52,12 @@ impl FileCache {
     }
 
     /// Function to check that file is formatted properly
-    /// TODO
-    pub fn check_file_parses(&self) -> Result<bool, CurrentDirError> {
-        Ok(true)
+    pub fn check_file_parses(&self) -> bool {
+        self.find_file("something").is_ok()
     }
 
-    /// Function to update filecache, is_forced rewrites the entire thing,
-    /// TODO, create the not forcing option
-    pub fn update_filecache(&self, is_forced: bool) -> Result<(), CurrentDirError> {
-        if !is_forced {
-            return Err(CurrentDirError::CannotSerialize);
-        }
-
+    /// Function to update filecache
+    pub fn update_filecache(&self) -> Result<(), CurrentDirError> {
         let buf_writer = BufWriter::new(
             File::options()
                 .write(true)
@@ -74,14 +68,12 @@ impl FileCache {
         );
         let mut csv_writer = csv::Writer::from_writer(buf_writer);
         for entry in WalkDir::new("/").into_iter().filter_map(|e| e.ok()) {
-            if is_forced {
-                let filedata = FileData::from(entry);
-                csv_writer
-                    .serialize(filedata)
-                    .map_err(|_| CurrentDirError::CannotReadDir {
-                        dir_name: self.file_location.to_string_lossy().to_string(),
-                    })?
-            }
+            let filedata = FileData::from(entry);
+            csv_writer
+                .serialize(filedata)
+                .map_err(|_| CurrentDirError::CannotReadDir {
+                    dir_name: self.file_location.to_string_lossy().to_string(),
+                })? 
         }
 
         Ok(())
