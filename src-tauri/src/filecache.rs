@@ -4,7 +4,8 @@ use std::{
     fs::File,
     io::{BufReader, BufWriter},
     path::{Path, PathBuf},
-    sync::Mutex,
+    sync::{Arc, Mutex},
+    time::Duration,
 };
 use walkdir::WalkDir;
 
@@ -26,6 +27,18 @@ impl CachedFile {
     }
 }
 
+fn run_cache_on_interval(filecache: Arc<FileCache>) {
+    tokio::spawn(async move {
+        let mut interval = tokio::time::interval(Duration::from_secs(60));
+
+        // Update filecache in intervals
+        loop {
+            interval.tick().await;
+            let _ = filecache.update_filecache_file_from_memory();
+        }
+    });
+}
+
 #[derive(Debug)]
 pub struct FileCache {
     file_location: PathBuf,
@@ -33,21 +46,23 @@ pub struct FileCache {
 }
 
 impl FileCache {
-    pub fn new(location: PathBuf) -> Result<Self, CurrentDirError> {
+    pub fn new(location: PathBuf) -> Result<Arc<Self>, CurrentDirError> {
         // Check that file can be opened, otherwise try to create new file
-        let fc = FileCache {
+        let filecache = Arc::new(FileCache {
             file_location: location.clone(),
             cache: Mutex::new(MultiMap::new()),
-        };
+        });
 
-        if fc.check_file_parses() {
+        if !filecache.check_file_parses() {
             let _ = File::create(&location).map_err(|_| CurrentDirError::CannotReadDir {
                 dir_name: location.to_string_lossy().to_string(),
             })?;
+            filecache.update_filecache_file_replace()?;
         }
-        fc.update_filecache_file_replace()?;
-        fc.read_cache_from_cache_file()?;
-        Ok(fc)
+
+        filecache.read_cache_from_cache_file()?;
+        run_cache_on_interval(Arc::clone(&filecache));
+        Ok(filecache)
     }
 
     pub fn find_file(&self, name: &str) -> Option<Vec<FileData>> {
@@ -61,8 +76,7 @@ impl FileCache {
         )
     }
 
-    /// This function is expensive, gets called when creating a new instance of this struct
-    /// TODO create a simpler function upates memory cache directly
+    /// This function is expensive, gets called when creating a new instance of this struct.
     fn read_cache_from_cache_file(&self) -> Result<(), CurrentDirError> {
         let file = File::options()
             .read(true)
@@ -87,7 +101,7 @@ impl FileCache {
         Ok(())
     }
 
-    /// Function to check that file is formatted properly
+    /// Function to check that cache file is formatted properly
     fn check_file_parses(&self) -> bool {
         let file = File::options()
             .read(true)
@@ -109,8 +123,7 @@ impl FileCache {
         true
     }
 
-    /// This function is expensive, gets called when creating a new instance of this struct
-    /// TODO new fucntion to handle smaller changes, eg from memory to file
+    /// This function is expensive, gets called when running filecache for the fist time
     fn update_filecache_file_replace(&self) -> Result<(), CurrentDirError> {
         let tmp_file_path = Path::new("cache.tmp");
         let tempfile =
@@ -134,6 +147,30 @@ impl FileCache {
             .map_err(|_| CurrentDirError::CannotCreateFile)?;
         Ok(())
     }
+
+    pub fn update_filecache_file_from_memory(&self) -> Result<(), CurrentDirError> {
+        let tmp_file_path = Path::new("cache.tmp");
+        let tempfile: File =
+            File::create(tmp_file_path).map_err(|_| CurrentDirError::CannotCreateFile)?;
+        let buf_writer = BufWriter::new(tempfile);
+        let mut csv_writer = csv::Writer::from_writer(buf_writer);
+
+        let cache = self.cache.lock().unwrap();
+        for element in cache
+            .iter()
+            .map(|(name, data)| FileData::from_cachedfile_with_string(data, name.to_owned()))
+        {
+            csv_writer
+                .serialize(element)
+                .map_err(|_| CurrentDirError::CannotReadDir {
+                    dir_name: self.file_location.to_string_lossy().to_string(),
+                })?;
+        }
+
+        std::fs::rename(tmp_file_path, &self.file_location)
+            .map_err(|_| CurrentDirError::CannotCreateFile)?;
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -142,7 +179,7 @@ mod test {
     use std::path::Path;
 
     #[test]
-    fn cachedfile_from_fildata() {
+    fn cachedfile_from_filedata() {
         let fd = FileData {
             name: "test".to_owned(),
             path: Path::new("test").to_owned(),

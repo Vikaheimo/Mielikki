@@ -38,7 +38,8 @@ fn current_dir_is_root(state: tauri::State<OuterCurrentDir>) -> bool {
     state_guard.current_dir_is_root()
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     tauri::Builder::default()
         .manage(OuterCurrentDir(Mutex::new(CurrentDir::new(Path::new(".")))))
         .invoke_handler(tauri::generate_handler![
