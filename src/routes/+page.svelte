@@ -1,11 +1,11 @@
 <script lang="ts">
     import { onDestroy } from 'svelte';
-    import SubDir from '$lib/components/SubDirectory.svelte';
+    import FileDisplay from '$lib/components/FileDisplay.svelte';
     import type { Filedata } from '$lib/dirFunctions';
     import { updateCurrentDir } from '$lib/dirFunctions';
     import DirectoryStore from '$lib/stores/DirectoryStore';
 
-    let contents: Array<Filedata> = [];
+    let contents: Filedata[] = [];
     let dirName = '';
 
     let unSubscribe = DirectoryStore.subscribe((data) => {
@@ -24,7 +24,7 @@
     <h1>Direcory listing of <strong>{dirName}</strong></h1>
     <ul>
         {#each contents as content}
-            <li><SubDir folderdata={content} /></li>
+            <li><FileDisplay folderdata={content} /></li>
         {/each}
     </ul>
 </main>
