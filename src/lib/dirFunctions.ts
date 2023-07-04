@@ -46,8 +46,8 @@ export const updateCurrentDir = (): void => {
         .catch((err) => console.error(err));
 };
 
-export const changeDirectory = (path: string) => {
-    invoke('move_to_folder', { folderPath: path })
+export const changeDirectory = (path: string, toParent = false) => {
+    invoke('move_to_folder', { folderPath: path, toParent })
         .then(() => {
             updateCurrentDir();
         })

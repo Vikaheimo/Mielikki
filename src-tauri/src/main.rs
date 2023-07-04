@@ -19,10 +19,11 @@ fn get_current_folder(state: tauri::State<OuterCurrentDir>) -> Result<FolderData
 fn move_to_folder(
     state: tauri::State<OuterCurrentDir>,
     folder_path: String,
+    to_parent: bool,
 ) -> Result<(), CurrentDirError> {
     let mut state_guard = state.0.lock().unwrap();
 
-    state_guard.move_to_dir(&PathBuf::from(folder_path))
+    state_guard.move_to_dir(&PathBuf::from(folder_path), to_parent)
 }
 
 #[tauri::command]

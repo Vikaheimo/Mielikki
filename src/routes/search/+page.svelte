@@ -18,7 +18,7 @@
     });
 
     const onFileClick = (data: Filedata) => {
-        changeDirectory(data.path);
+        changeDirectory(data.path, true);
         goto('/');
     };
 </script>

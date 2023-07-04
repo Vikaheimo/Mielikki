@@ -105,12 +105,17 @@ impl CurrentDir {
         Ok(old_path)
     }
 
-    pub fn move_to_dir(&mut self, path: &Path) -> Result<(), CurrentDirError> {
+    pub fn move_to_dir(&mut self, path: &Path, to_parent: bool) -> Result<(), CurrentDirError> {
         let parsed = CurrentDir::parse_path_to_absolute(path)?;
         if !parsed.is_dir() {
             return Err(CurrentDirError::CannotMoveToFile);
         }
         self.path = parsed;
+
+        if to_parent {
+            self.move_to_parent_dir()?;
+        }
+
         Ok(())
     }
 
