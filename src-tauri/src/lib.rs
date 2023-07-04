@@ -5,11 +5,13 @@ use serde::{Deserialize, Serialize};
 use std::{
     fs,
     path::{Path, PathBuf},
+    sync::Arc,
 };
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct CurrentDir {
     path: PathBuf,
+    file_cache: Arc<filecache::FileCache>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -79,12 +81,16 @@ pub enum CurrentDirError {
     CannotSerialize,
     CannotCreateFile,
     CannotWriteToFile,
+    SearchedFileNotFound,
 }
 
 impl CurrentDir {
     pub fn new(path: &Path) -> Self {
         let parsed_path = CurrentDir::parse_path_to_absolute(path).unwrap();
-        CurrentDir { path: parsed_path }
+        CurrentDir {
+            path: parsed_path,
+            file_cache: filecache::FileCache::new(Path::new("cache").to_path_buf()).unwrap(),
+        }
     }
 
     /// Returns the old path as the ok type
@@ -162,6 +168,27 @@ impl CurrentDir {
 
     pub fn current_dir_is_root(&self) -> bool {
         self.path.parent().is_none()
+    }
+
+    pub fn search_files(
+        &self,
+        name: &str,
+        search_files: bool,
+        search_folders: bool,
+        search_links: bool,
+    ) -> Result<Vec<FileData>, CurrentDirError> {
+        Ok(self
+            .file_cache
+            .find_file(name)
+            .ok_or(CurrentDirError::SearchedFileNotFound)?
+            .into_iter()
+            .filter(|file| match file.filetype {
+                FileType::File if search_files => true,
+                FileType::Folder if search_folders => true,
+                FileType::Link if search_links => true,
+                _ => false,
+            })
+            .collect::<Vec<FileData>>())
     }
 }
 

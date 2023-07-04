@@ -1,6 +1,7 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use mielikki::FileData;
 use mielikki::{CurrentDir, CurrentDirError, FolderData};
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
@@ -34,8 +35,19 @@ fn move_to_parent_folder(state: tauri::State<OuterCurrentDir>) -> Result<String,
 #[tauri::command]
 fn current_dir_is_root(state: tauri::State<OuterCurrentDir>) -> bool {
     let state_guard = state.0.lock().unwrap();
-
     state_guard.current_dir_is_root()
+}
+
+#[tauri::command]
+fn find_file(
+    state: tauri::State<OuterCurrentDir>,
+    name: String,
+    search_files: bool,
+    search_folders: bool,
+    search_links: bool,
+) -> Result<Vec<FileData>, CurrentDirError> {
+    let state_guard = state.0.lock().unwrap();
+    state_guard.search_files(&name, search_files, search_folders, search_links)
 }
 
 #[tokio::main]
@@ -46,7 +58,8 @@ async fn main() {
             get_current_folder,
             move_to_folder,
             move_to_parent_folder,
-            current_dir_is_root
+            current_dir_is_root,
+            find_file
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
