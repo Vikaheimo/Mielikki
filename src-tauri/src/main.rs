@@ -19,10 +19,11 @@ fn get_current_folder(state: tauri::State<OuterCurrentDir>) -> Result<FolderData
 fn move_to_folder(
     state: tauri::State<OuterCurrentDir>,
     folder_path: String,
+    to_parent: bool,
 ) -> Result<(), CurrentDirError> {
     let mut state_guard = state.0.lock().unwrap();
 
-    state_guard.move_to_dir(&PathBuf::from(folder_path))
+    state_guard.move_to_dir(&PathBuf::from(folder_path), to_parent)
 }
 
 #[tauri::command]
@@ -42,12 +43,12 @@ fn current_dir_is_root(state: tauri::State<OuterCurrentDir>) -> bool {
 fn find_file(
     state: tauri::State<OuterCurrentDir>,
     name: String,
-    search_files: bool,
-    search_folders: bool,
-    search_links: bool,
+    files: bool,
+    folders: bool,
+    links: bool,
 ) -> Result<Vec<FileData>, CurrentDirError> {
     let state_guard = state.0.lock().unwrap();
-    state_guard.search_files(&name, search_files, search_folders, search_links)
+    state_guard.search_files(&name, files, folders, links)
 }
 
 #[tokio::main]

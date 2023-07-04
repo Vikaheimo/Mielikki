@@ -1,5 +1,6 @@
 import { invoke } from '@tauri-apps/api/tauri';
-import directoryStore, { popForward, addForward } from './stores/DirectoryStore';
+import directoryStore, { popForward, pushForward } from './stores/DirectoryStore';
+import { addData } from './stores/SearchStore';
 
 export type Filedata = {
     name: string;
@@ -11,6 +12,13 @@ export type FolderData = {
     name: string;
     files: Filedata[];
     is_at_root: boolean;
+};
+
+export type SearchData = {
+    name: string;
+    files: boolean;
+    folders: boolean;
+    links: boolean;
 };
 
 export const updateCurrentDir = (): void => {
@@ -38,8 +46,8 @@ export const updateCurrentDir = (): void => {
         .catch((err) => console.error(err));
 };
 
-export const changeDirectory = (path: string) => {
-    invoke('move_to_folder', { folderPath: path })
+export const changeDirectory = (path: string, toParent = false) => {
+    invoke('move_to_folder', { folderPath: path, toParent })
         .then(() => {
             updateCurrentDir();
         })
@@ -50,9 +58,15 @@ export const changeToParentDirectory = () => {
     invoke('move_to_parent_folder')
         .then((path: string) => {
             updateCurrentDir();
-            addForward(path);
+            pushForward(path);
         })
         .catch((err) => console.error(err));
+};
+
+export const searchFiles = (data: SearchData) => {
+    invoke('find_file', data).then((results: Filedata[]) => {
+        addData(results);
+    });
 };
 
 export const moveForwardDir = () => {
