@@ -2,7 +2,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use mielikki::FileData;
-use mielikki::{filecache::FileCache, CurrentDir, CurrentDirError, FolderData};
+use mielikki::{CurrentDir, CurrentDirError, FolderData};
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 

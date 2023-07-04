@@ -69,10 +69,10 @@ impl FileCache {
     pub fn find_file(&self, name: &str) -> Option<Vec<FileData>> {
         let cache = self.cache.lock().unwrap();
         let files: Vec<_> = cache
-                .get_vec(name)?
-                .iter()
-                .map(|f| FileData::from_cachedfile_with_string(f, name.to_owned()))
-                .collect();
+            .get_vec(name)?
+            .iter()
+            .map(|f| FileData::from_cachedfile_with_string(f, name.to_owned()))
+            .collect();
         if files.is_empty() {
             return None;
         }
