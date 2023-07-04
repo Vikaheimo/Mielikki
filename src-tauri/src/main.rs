@@ -42,12 +42,12 @@ fn current_dir_is_root(state: tauri::State<OuterCurrentDir>) -> bool {
 fn find_file(
     state: tauri::State<OuterCurrentDir>,
     name: String,
-    search_files: bool,
-    search_folders: bool,
-    search_links: bool,
+    files: bool,
+    folders: bool,
+    links: bool,
 ) -> Result<Vec<FileData>, CurrentDirError> {
     let state_guard = state.0.lock().unwrap();
-    state_guard.search_files(&name, search_files, search_folders, search_links)
+    state_guard.search_files(&name, files, folders, links)
 }
 
 #[tokio::main]

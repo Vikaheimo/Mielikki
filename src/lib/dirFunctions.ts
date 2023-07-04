@@ -1,5 +1,6 @@
 import { invoke } from '@tauri-apps/api/tauri';
 import directoryStore, { popForward, pushForward } from './stores/DirectoryStore';
+import { addData } from './stores/SearchStore';
 
 export type Filedata = {
     name: string;
@@ -14,7 +15,7 @@ export type FolderData = {
 };
 
 export type SearchData = {
-    filename: string;
+    name: string;
     files: boolean;
     folders: boolean;
     links: boolean;
@@ -60,6 +61,12 @@ export const changeToParentDirectory = () => {
             pushForward(path);
         })
         .catch((err) => console.error(err));
+};
+
+export const searchFiles = (data: SearchData) => {
+    invoke('find_file', data).then((results: Filedata[]) => {
+        addData(results);
+    });
 };
 
 export const moveForwardDir = () => {

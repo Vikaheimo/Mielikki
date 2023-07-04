@@ -9,7 +9,7 @@
             files: formData.get('file') === 'on',
             folders: formData.get('folder') === 'on',
             links: formData.get('link') === 'on',
-            filename: formData.get('search') as string
+            name: formData.get('search') as string
         };
         searchHandler(data);
     };

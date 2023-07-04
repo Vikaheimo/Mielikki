@@ -1,7 +1,13 @@
 <script lang="ts">
     import type { SearchData } from '$lib/dirFunctions';
-    import { changeToParentDirectory, moveForwardDir, updateCurrentDir } from '$lib/dirFunctions';
+    import {
+        changeToParentDirectory,
+        moveForwardDir,
+        updateCurrentDir,
+        searchFiles
+    } from '$lib/dirFunctions';
     import directoryStore from '$lib/stores/DirectoryStore';
+    import { clearData } from '$lib/stores/SearchStore';
     import { onDestroy } from 'svelte';
     import SearchBar from './SearchBar.svelte';
 
@@ -17,7 +23,10 @@
         unSubscribe();
     });
 
-    const handleSearch = (data: SearchData) => {};
+    const handleSearch = (data: SearchData) => {
+        clearData();
+        searchFiles(data);
+    };
 </script>
 
 <nav>
