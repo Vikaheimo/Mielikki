@@ -4,7 +4,8 @@ A simple file manager that aims to be faster than File Explorer.
 
 ## Current Goals
 
-- [ ] File lookup in under 10 seconds
+- [x] ~~File lookup in under 10 seconds~~ (Backend searches happen in about 1ms)
+- [ ] Windows support
 - [x] Directory lookup faster than Windows File Explorer
 - [x] Simple Navigable UI
 - [ ] Bug free? (Never going to happen)

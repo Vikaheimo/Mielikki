@@ -34,6 +34,7 @@ fn run_cache_on_interval(filecache: Arc<FileCache>) {
         // Update filecache in intervals
         loop {
             interval.tick().await;
+            filecache.update_memory_cache();
             let _ = filecache.update_filecache_file_from_memory();
         }
     });
@@ -57,7 +58,7 @@ impl FileCache {
             let _ = File::create(&location).map_err(|_| CurrentDirError::CannotReadDir {
                 dir_name: location.to_string_lossy().to_string(),
             })?;
-            filecache.update_filecache_file_replace()?;
+            filecache.update_filecache_file_with_new()?;
         }
 
         filecache.read_cache_from_cache_file()?;
@@ -101,6 +102,17 @@ impl FileCache {
         Ok(())
     }
 
+    pub fn update_memory_cache(&self) {
+        let new_data = WalkDir::new("/")
+            .into_iter()
+            .filter_map(|e| e.ok())
+            .map(FileData::from)
+            .map(CachedFile::from_filedata)
+            .collect::<MultiMap<String, CachedFile>>();
+        let mut cache = self.cache.lock().unwrap();
+        *cache = new_data;
+    }
+
     /// Function to check that cache file is formatted properly
     fn check_file_parses(&self) -> bool {
         let file = File::options()
@@ -124,7 +136,7 @@ impl FileCache {
     }
 
     /// This function is expensive, gets called when running filecache for the fist time
-    fn update_filecache_file_replace(&self) -> Result<(), CurrentDirError> {
+    fn update_filecache_file_with_new(&self) -> Result<(), CurrentDirError> {
         let tmp_file_path = Path::new("cache.tmp");
         let tempfile =
             File::create(tmp_file_path).map_err(|_| CurrentDirError::CannotCreateFile)?;
