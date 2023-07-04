@@ -1,3 +1,5 @@
+pub mod filecache;
+
 use derive_more::{Display, Error};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -17,14 +19,34 @@ pub struct FolderData {
     pub is_at_root: bool,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct FileData {
     name: String,
     path: PathBuf,
     filetype: FileType,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+impl From<walkdir::DirEntry> for FileData {
+    fn from(value: walkdir::DirEntry) -> Self {
+        FileData {
+            name: value.file_name().to_string_lossy().to_string(),
+            path: value.path().to_path_buf(),
+            filetype: FileType::from(value.file_type()),
+        }
+    }
+}
+
+impl FileData {
+    pub fn from_cachedfile_with_string(cached_file: &filecache::CachedFile, name: String) -> Self {
+        FileData {
+            name,
+            path: cached_file.path.to_owned(),
+            filetype: cached_file.filetype,
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
 pub enum FileType {
     Folder,
     File,
@@ -47,12 +69,16 @@ impl From<std::fs::FileType> for FileType {
 pub enum CurrentDirError {
     AlreadyAtRoot,
     PathCannotBeMadeAbsolute,
+    CannotGetFileType,
     #[display(fmt = "Directory \"{}\" cannot be found", dir_name)]
     CannotReadDir {
         dir_name: String,
     },
     CannotMoveToFile,
     IsntUTF8,
+    CannotSerialize,
+    CannotCreateFile,
+    CannotWriteToFile,
 }
 
 impl CurrentDir {
@@ -96,11 +122,11 @@ impl CurrentDir {
                 .ok_or(CurrentDirError::IsntUTF8)?
                 .to_owned();
             let path = entry.path();
-            let filetype = FileType::from(entry.file_type().map_err(|err| {
-                CurrentDirError::CannotReadDir {
-                    dir_name: err.to_string(),
-                }
-            })?);
+            let filetype = FileType::from(
+                entry
+                    .file_type()
+                    .map_err(|_| CurrentDirError::CannotGetFileType)?,
+            );
 
             siblings.push(FileData {
                 name,
@@ -136,5 +162,27 @@ impl CurrentDir {
 
     pub fn current_dir_is_root(&self) -> bool {
         self.path.parent().is_none()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::filecache::CachedFile;
+    use super::{FileData, FileType};
+    use std::path::Path;
+
+    #[test]
+    fn filedata_to_cachedfile() {
+        let cf = CachedFile {
+            path: Path::new("test").to_owned(),
+            filetype: FileType::Folder,
+        };
+        let got = FileData::from_cachedfile_with_string(&cf, "test".to_owned());
+        let model = FileData {
+            name: "test".to_owned(),
+            path: Path::new("test").to_owned(),
+            filetype: FileType::Folder,
+        };
+        assert_eq!(got, model)
     }
 }
