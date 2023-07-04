@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { changeToParentDirectory, moveForwardDir } from '$lib/dirFunctions';
+    import { changeToParentDirectory, moveForwardDir, updateCurrentDir } from '$lib/dirFunctions';
     import directoryStore from '$lib/stores/DirectoryStore';
 
     import NavBar from '$lib/NavBar.svelte';
@@ -22,6 +22,7 @@
     backButtonOnClick={changeToParentDirectory}
     isforwardDisabled={forward.length === 0}
     forwardButtonOnClick={moveForwardDir}
+    refreshOnClick={updateCurrentDir}
 />
 
 <main>
