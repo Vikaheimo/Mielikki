@@ -13,6 +13,13 @@ export type FolderData = {
     is_at_root: boolean;
 };
 
+export type SearchData = {
+    filename: string;
+    files: boolean;
+    folders: boolean;
+    links: boolean;
+};
+
 export const updateCurrentDir = (): void => {
     // clear siblings
     directoryStore.update((current) => {

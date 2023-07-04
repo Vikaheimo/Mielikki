@@ -1,20 +1,33 @@
 <script lang="ts">
+    import type { SearchData } from '$lib/dirFunctions';
+    import { changeToParentDirectory, moveForwardDir, updateCurrentDir } from '$lib/dirFunctions';
+    import directoryStore from '$lib/stores/DirectoryStore';
+    import { onDestroy } from 'svelte';
     import SearchBar from './SearchBar.svelte';
-    export let backButtonOnClick: () => void;
-    export let isBackDisabled: boolean = false;
-    export let forwardButtonOnClick: () => void;
-    export let isforwardDisabled: boolean = true;
-    export let refreshOnClick: () => void;
+
+    let forward: string[] = [];
+    let isAtRoot = false;
+
+    let unSubscribe = directoryStore.subscribe((data) => {
+        forward = data.forward;
+        isAtRoot = data.isAtRoot;
+    });
+
+    onDestroy(() => {
+        unSubscribe();
+    });
+
+    const handleSearch = (data: SearchData) => {};
 </script>
 
 <nav>
     <div class="buttons">
-        <button disabled={isBackDisabled} on:click={backButtonOnClick}>&#10092;</button>
-        <button disabled={isforwardDisabled} on:click={forwardButtonOnClick}>&#10093;</button>
-        <button on:click={refreshOnClick}>&#10227;</button>
+        <button disabled={isAtRoot} on:click={changeToParentDirectory}>&#10092;</button>
+        <button disabled={forward.length === 0} on:click={moveForwardDir}>&#10093;</button>
+        <button on:click={updateCurrentDir}>&#10227;</button>
     </div>
     <div class="searchbar">
-        <SearchBar />
+        <SearchBar searchHandler={handleSearch} />
     </div>
 </nav>
 
