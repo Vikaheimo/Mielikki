@@ -20,7 +20,7 @@ const directoryStore: DirectoryStore = writable({
     ]
 });
 
-export const addForward = (new_path: string) => {
+export const pushForward = (new_path: string) => {
     directoryStore.update((data) => {
         return {
             dirName: data.dirName,
