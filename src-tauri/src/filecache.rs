@@ -14,12 +14,6 @@ pub struct CachedFile {
     pub filetype: FileType,
 }
 
-#[derive(Debug)]
-pub struct FileCache {
-    file_location: PathBuf,
-    cache: Mutex<MultiMap<String, CachedFile>>,
-}
-
 impl CachedFile {
     pub fn from_filedata(data: FileData) -> (String, CachedFile) {
         (
@@ -30,6 +24,12 @@ impl CachedFile {
             },
         )
     }
+}
+
+#[derive(Debug)]
+pub struct FileCache {
+    file_location: PathBuf,
+    cache: Mutex<MultiMap<String, CachedFile>>,
 }
 
 impl FileCache {
@@ -45,8 +45,8 @@ impl FileCache {
                 dir_name: location.to_string_lossy().to_string(),
             })?;
         }
-        fc.update_filecache_file()?;
-        fc.update_memory_cache_from_file()?;
+        fc.update_filecache_file_replace()?;
+        fc.read_cache_from_cache_file()?;
         Ok(fc)
     }
 
@@ -60,7 +60,10 @@ impl FileCache {
                 .collect(),
         )
     }
-    pub fn update_memory_cache_from_file(&self) -> Result<(), CurrentDirError> {
+
+    /// This function is expensive, gets called when creating a new instance of this struct
+    /// TODO create a simpler function upates memory cache directly
+    fn read_cache_from_cache_file(&self) -> Result<(), CurrentDirError> {
         let file = File::options()
             .read(true)
             .open(&self.file_location)
@@ -106,7 +109,9 @@ impl FileCache {
         true
     }
 
-    pub fn update_filecache_file(&self) -> Result<(), CurrentDirError> {
+    /// This function is expensive, gets called when creating a new instance of this struct
+    /// TODO new fucntion to handle smaller changes, eg from memory to file
+    fn update_filecache_file_replace(&self) -> Result<(), CurrentDirError> {
         let tmp_file_path = Path::new("cache.tmp");
         let tempfile =
             File::create(tmp_file_path).map_err(|_| CurrentDirError::CannotCreateFile)?;
