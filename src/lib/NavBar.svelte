@@ -4,12 +4,14 @@
     export let isBackDisabled: boolean = false;
     export let forwardButtonOnClick: () => void;
     export let isforwardDisabled: boolean = true;
+    export let refreshOnClick: () => void;
 </script>
 
 <nav>
     <div class="buttons">
         <button disabled={isBackDisabled} on:click={backButtonOnClick}>&#10092;</button>
         <button disabled={isforwardDisabled} on:click={forwardButtonOnClick}>&#10093;</button>
+        <button on:click={refreshOnClick}>&#10227;</button>
     </div>
     <div class="searchbar">
         <SearchBar />
