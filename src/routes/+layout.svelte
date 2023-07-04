@@ -2,7 +2,7 @@
     import { changeToParentDirectory, moveForwardDir, updateCurrentDir } from '$lib/dirFunctions';
     import directoryStore from '$lib/stores/DirectoryStore';
 
-    import NavBar from '$lib/NavBar.svelte';
+    import NavBar from '$lib/components/NavBar.svelte';
     import { onDestroy } from 'svelte';
 
     let forward: string[] = [];

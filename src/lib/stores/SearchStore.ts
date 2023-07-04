@@ -12,14 +12,14 @@ const searchStore: SearchStore = writable({
 export const clearData = () => {
     searchStore.set({
         data: []
-    })
-}
+    });
+};
 
-export const addData = (newData: Filedata[]) =>{
+export const addData = (newData: Filedata[]) => {
     // clearData()
     searchStore.set({
         data: newData
-    })
-}
+    });
+};
 
 export default searchStore;

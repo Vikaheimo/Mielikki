@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { changeDirectory } from './dirFunctions';
+    import { changeDirectory } from '../dirFunctions';
     type Filedata = {
         name: String;
         path: string;
