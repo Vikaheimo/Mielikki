@@ -2,7 +2,7 @@
     import { onDestroy } from 'svelte';
     import FileDisplay from '$lib/components/FileDisplay.svelte';
     import type { Filedata } from '$lib/dirFunctions';
-    import { updateCurrentDir } from '$lib/dirFunctions';
+    import { changeDirectory, updateCurrentDir } from '$lib/dirFunctions';
     import DirectoryStore from '$lib/stores/DirectoryStore';
 
     let contents: Filedata[] = [];
@@ -17,14 +17,23 @@
         unSubscribe();
     });
 
+    const handleFileClick = (data: Filedata) => {
+        if (data.filetype == 'File') {
+            return;
+        }
+        changeDirectory(data.path);
+    };
+
     updateCurrentDir();
 </script>
 
 <main>
-    <h1>Direcory listing of <strong>{dirName}</strong></h1>
+    <h1>Directory listing of <strong>{dirName}</strong></h1>
     <ul>
-        {#each contents as content}
-            <li><FileDisplay folderdata={content} /></li>
+        {#each contents as file}
+            <li>
+                <FileDisplay filedata={file} onClick={handleFileClick} />
+            </li>
         {/each}
     </ul>
 </main>

@@ -1,32 +1,22 @@
 <script lang="ts">
-    import { changeDirectory } from '../dirFunctions';
-    type Filedata = {
-        name: String;
-        path: string;
-        filetype: string;
-    };
+    import type { Filedata } from '$lib/dirFunctions';
 
-    export let folderdata: Filedata;
-
-    let filetype = folderdata.filetype;
-    let path = folderdata.path;
-    let name = folderdata.name;
+    export let filedata: Filedata;
+    export let onClick: (data: Filedata) => void;
+    let filetype = filedata.filetype;
+    let path = filedata.path;
+    let name = filedata.name;
 
     let imgSrc = `/images/${filetype}.png`;
-    const handleClick = () => {
-        if (filetype == 'File') {
-            return;
-        }
-        changeDirectory(path);
-    };
 </script>
 
 <!-- svelte-ignore a11y-click-events-have-key-events -->
 <!-- svelte-ignore a11y-no-static-element-interactions -->
-<div on:click={handleClick}>
+<div on:click={() => onClick(filedata)}>
     <img src={imgSrc} alt="OOPS" />
     <div>
         <h2>{name}</h2>
+        <p>{path}</p>
     </div>
 </div>
 
@@ -39,6 +29,7 @@
     div div {
         padding-left: 0.5rem;
         display: inline;
+        line-height: 1.5;
     }
     div {
         display: flex;
@@ -46,5 +37,6 @@
     }
     h2 {
         display: inline;
+        font-size: larger;
     }
 </style>

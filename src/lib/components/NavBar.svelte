@@ -7,14 +7,15 @@
         searchFiles
     } from '$lib/dirFunctions';
     import directoryStore from '$lib/stores/DirectoryStore';
-    import { clearData } from '$lib/stores/SearchStore';
+    import searchStore from '$lib/stores/SearchStore';
     import { onDestroy } from 'svelte';
     import SearchBar from './SearchBar.svelte';
+    import { goto } from '$app/navigation';
 
     let forward: string[] = [];
     let isAtRoot = false;
 
-    let unSubscribe = directoryStore.subscribe((data) => {
+    const unSubscribe = directoryStore.subscribe((data) => {
         forward = data.forward;
         isAtRoot = data.isAtRoot;
     });
@@ -24,8 +25,12 @@
     });
 
     const handleSearch = (data: SearchData) => {
-        clearData();
+        searchStore.set({
+            search: data,
+            data: []
+        });
         searchFiles(data);
+        goto('search');
     };
 </script>
 
