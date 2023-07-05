@@ -7,7 +7,6 @@ use std::{
     sync::{Arc, Mutex},
     time::Duration,
 };
-use trie_rs::{Trie, TrieBuilder};
 use walkdir::WalkDir;
 
 fn run_cache_on_interval(filecache: Arc<FileCache>) {
@@ -25,7 +24,7 @@ fn run_cache_on_interval(filecache: Arc<FileCache>) {
 
 pub struct FileCache {
     file_location: PathBuf,
-    cache: Mutex<(MultiMap<String, FileData>, Trie<u8>)>,
+    cache: Mutex<MultiMap<String, FileData>>,
 }
 
 impl FileCache {
@@ -33,7 +32,7 @@ impl FileCache {
         // Check that file can be opened, otherwise try to create new file
         let filecache = Arc::new(FileCache {
             file_location: location.clone(),
-            cache: Mutex::new((MultiMap::new(), TrieBuilder::new().build())),
+            cache: Mutex::new(MultiMap::new()),
         });
 
         if !filecache.check_file_parses() {
@@ -50,20 +49,13 @@ impl FileCache {
 
     pub fn find_file(&self, name: &str) -> Option<Vec<FileData>> {
         let cache = self.cache.lock().unwrap();
-        let results: Vec<_> = cache
-            .1
-            .predictive_search(name.to_lowercase())
-            .iter()
-            .map(|u8s| std::str::from_utf8(u8s).unwrap())
-            .filter_map(|name| cache.0.get_vec(name))
-            .flat_map(|v| v.to_owned())
-            .collect();
-
-        if results.is_empty() {
-            return None;
-        }
-
-        Some(results)
+        Some(
+            cache
+                .get_vec(&name.to_lowercase())?
+                .iter()
+                .map(|f| f.to_owned())
+                .collect(),
+        )
     }
 
     /// This function is expensive, gets called when creating a new instance of this struct.
@@ -85,13 +77,8 @@ impl FileCache {
             })
             .collect::<Result<MultiMap<String, FileData>, CurrentDirError>>()?;
 
-        let mut builder = TrieBuilder::new();
-        for name in new_data.iter().map(|(name, _)| name.as_str()) {
-            builder.push(name)
-        }
-        let new_search = builder.build();
         let mut cache = self.cache.lock().unwrap();
-        *cache = (new_data, new_search);
+        *cache = new_data;
 
         Ok(())
     }
@@ -104,14 +91,8 @@ impl FileCache {
             .map(|f| (f.name.clone().to_lowercase(), f))
             .collect::<MultiMap<String, FileData>>();
 
-        let mut builder = TrieBuilder::new();
-        for name in new_data.iter().map(|(name, _)| name.as_str()) {
-            builder.push(name)
-        }
-        let new_search = builder.build();
-
         let mut cache = self.cache.lock().unwrap();
-        *cache = (new_data, new_search);
+        *cache = new_data;
     }
 
     /// Function to check that cache file is formatted properly
@@ -169,7 +150,7 @@ impl FileCache {
         let mut csv_writer = csv::Writer::from_writer(buf_writer);
 
         let cache = self.cache.lock().unwrap();
-        for (_name, element) in cache.0.iter() {
+        for (_name, element) in cache.iter() {
             csv_writer
                 .serialize(element)
                 .map_err(|_| CurrentDirError::CannotReadDir {
