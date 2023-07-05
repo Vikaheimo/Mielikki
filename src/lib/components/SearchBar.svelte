@@ -1,5 +1,5 @@
 <script lang="ts">
-    import type { SearchData } from '$lib/dirFunctions';
+    import type { SearchData } from '$lib/DirFunctions';
 
     export let searchHandler: (data: SearchData) => void;
 

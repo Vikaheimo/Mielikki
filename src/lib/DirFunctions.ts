@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/tauri';
-import directoryStore, { popForward, pushForward } from './stores/DirectoryStore';
+import directoryStore, { popForward, pushForward, clearSiblings } from './stores/DirectoryStore';
 import { addData } from './stores/SearchStore';
 
 export type Filedata = {
@@ -22,15 +22,7 @@ export type SearchData = {
 };
 
 export const updateCurrentDir = (): void => {
-    // clear siblings
-    directoryStore.update((current) => {
-        return {
-            dirName: current.dirName,
-            forward: current.forward,
-            isAtRoot: current.isAtRoot,
-            siblings: []
-        };
-    });
+    clearSiblings();
 
     invoke('get_current_folder', {})
         .then((data: FolderData) => {
@@ -43,7 +35,9 @@ export const updateCurrentDir = (): void => {
                 };
             });
         })
-        .catch((err) => console.error(err));
+        .catch(() => {
+            changeToParentDirectory();
+        });
 };
 
 export const changeDirectory = (path: string, toParent = false) => {

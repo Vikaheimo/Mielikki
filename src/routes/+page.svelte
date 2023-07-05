@@ -1,8 +1,8 @@
 <script lang="ts">
     import { onDestroy } from 'svelte';
     import FileDisplay from '$lib/components/FileDisplay.svelte';
-    import type { Filedata } from '$lib/dirFunctions';
-    import { changeDirectory, updateCurrentDir } from '$lib/dirFunctions';
+    import type { Filedata } from '$lib/DirFunctions';
+    import { changeDirectory, updateCurrentDir } from '$lib/DirFunctions';
     import DirectoryStore from '$lib/stores/DirectoryStore';
 
     let contents: Filedata[] = [];
