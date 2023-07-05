@@ -1,12 +1,12 @@
 <script lang="ts">
-    import type { SearchData } from '$lib/dirFunctions';
+    import type { SearchData } from '$lib/DirFunctions';
     import NavigationButton from './NavigationButton.svelte';
     import {
         changeToParentDirectory,
         moveForwardDir,
         updateCurrentDir,
         searchFiles
-    } from '$lib/dirFunctions';
+    } from '$lib/DirFunctions';
     import directoryStore from '$lib/stores/DirectoryStore';
     import searchStore from '$lib/stores/SearchStore';
     import { onDestroy } from 'svelte';

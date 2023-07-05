@@ -1,7 +1,7 @@
 <script lang="ts">
     import { goto } from '$app/navigation';
     import FileDisplay from '$lib/components/FileDisplay.svelte';
-    import { changeDirectory, type Filedata } from '$lib/dirFunctions';
+    import { changeDirectory, type Filedata } from '$lib/DirFunctions';
     import SearchStore from '$lib/stores/SearchStore';
     import { onDestroy } from 'svelte';
 

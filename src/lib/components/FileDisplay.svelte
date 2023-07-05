@@ -1,5 +1,5 @@
 <script lang="ts">
-    import type { Filedata } from '$lib/dirFunctions';
+    import type { Filedata } from '$lib/DirFunctions';
 
     export let filedata: Filedata;
     export let onClick: (data: Filedata) => void;

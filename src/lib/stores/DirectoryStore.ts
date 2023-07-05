@@ -1,5 +1,5 @@
 import { writable, type Writable } from 'svelte/store';
-import type { Filedata } from '$lib/dirFunctions';
+import type { Filedata } from '$lib/DirFunctions';
 
 type DirectoryStore = Writable<{
     dirName: string;
@@ -21,28 +21,50 @@ const directoryStore: DirectoryStore = writable({
 });
 
 export const pushForward = (new_path: string) => {
-    directoryStore.update((data) => {
+    directoryStore.update((current) => {
         return {
-            dirName: data.dirName,
-            siblings: data.siblings,
-            isAtRoot: data.isAtRoot,
-            forward: [...data.forward, new_path]
+            dirName: current.dirName,
+            siblings: current.siblings,
+            isAtRoot: current.isAtRoot,
+            forward: [...current.forward, new_path]
         };
     });
 };
 
 export const popForward = (): string => {
     let last = '';
-    directoryStore.update((data) => {
-        last = data.forward[data.forward.length - 1];
+    directoryStore.update((current) => {
+        last = current.forward[current.forward.length - 1];
         return {
-            dirName: data.dirName,
-            siblings: data.siblings,
-            isAtRoot: data.isAtRoot,
-            forward: [...data.forward.slice(0, data.forward.length - 1)]
+            dirName: current.dirName,
+            siblings: current.siblings,
+            isAtRoot: current.isAtRoot,
+            forward: [...current.forward.slice(0, current.forward.length - 1)]
         };
     });
     return last;
+};
+
+export const clearForward = () => {
+    directoryStore.update((current) => {
+        return {
+            dirName: current.dirName,
+            siblings: current.siblings,
+            isAtRoot: current.isAtRoot,
+            forward: []
+        };
+    });
+};
+
+export const clearSiblings = () => {
+    directoryStore.update((current) => {
+        return {
+            dirName: current.dirName,
+            forward: current.forward,
+            isAtRoot: current.isAtRoot,
+            siblings: []
+        };
+    });
 };
 
 export default directoryStore;

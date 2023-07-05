@@ -1,4 +1,4 @@
-import type { Filedata, SearchData } from '$lib/dirFunctions';
+import type { Filedata, SearchData } from '$lib/DirFunctions';
 import { writable, type Writable } from 'svelte/store';
 
 export type SearchStore = Writable<{
