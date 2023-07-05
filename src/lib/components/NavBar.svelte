@@ -1,5 +1,6 @@
 <script lang="ts">
     import type { SearchData } from '$lib/dirFunctions';
+    import NavigationButton from './NavigationButton.svelte';
     import {
         changeToParentDirectory,
         moveForwardDir,
@@ -11,6 +12,7 @@
     import { onDestroy } from 'svelte';
     import SearchBar from './SearchBar.svelte';
     import { goto } from '$app/navigation';
+    import { text } from '@sveltejs/kit';
 
     let forward: string[] = [];
     let isAtRoot = false;
@@ -36,9 +38,9 @@
 
 <nav>
     <div class="buttons">
-        <button disabled={isAtRoot} on:click={changeToParentDirectory}>&#10092;</button>
-        <button disabled={forward.length === 0} on:click={moveForwardDir}>&#10093;</button>
-        <button on:click={updateCurrentDir}>&#10227;</button>
+        <NavigationButton disabled={isAtRoot} onClick={changeToParentDirectory} text={'❬'} />
+        <NavigationButton disabled={forward.length === 0} onClick={moveForwardDir} text={'❭'} />
+        <NavigationButton onClick={updateCurrentDir} text={'⟳'} />
     </div>
     <div class="searchbar">
         <SearchBar searchHandler={handleSearch} />
@@ -51,16 +53,6 @@
         background-color: #2c2c2c;
         border: black solid 1px;
         display: grid;
-    }
-
-    button {
-        background-color: #343434;
-        color: #eaeaea;
-        border: black solid 1px;
-        border-radius: 5px;
-        width: 2rem;
-        height: 2rem;
-        text-align: center;
     }
 
     .searchbar {
