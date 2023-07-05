@@ -51,10 +51,7 @@ impl FileCache {
         let cache = self.cache.lock().unwrap();
         Some(
             cache
-                .get_vec(&name.to_lowercase())?
-                .iter()
-                .map(|f| f.clone())
-                .collect(),
+                .get_vec(&name.to_lowercase())?.to_vec(),
         )
     }
 

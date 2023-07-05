@@ -66,7 +66,7 @@ pub enum CurrentDirError {
         dir_name: String,
     },
     #[display(fmt = "Cannot move to directory {}", file_name)]
-    CannotMoveToFile{
+    CannotMoveToFile {
         file_name: String,
     },
     IsntUTF8,
@@ -99,8 +99,10 @@ impl CurrentDir {
 
     pub fn move_to_dir(&mut self, path: &Path, to_parent: bool) -> Result<(), CurrentDirError> {
         let parsed = CurrentDir::parse_path_to_absolute(path)?;
-        if !parsed.is_dir() {
-            return Err(CurrentDirError::CannotMoveToFile {file_name: path.to_str().unwrap().to_string()});
+        if !parsed.is_dir() && !to_parent {
+            return Err(CurrentDirError::CannotMoveToFile {
+                file_name: path.to_str().unwrap().to_string(),
+            });
         }
         self.path = parsed;
 
