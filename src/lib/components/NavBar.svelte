@@ -38,9 +38,9 @@
 
 <nav>
     <div class="buttons">
-        <NavigationButton disabled={isAtRoot} onClick={changeToParentDirectory} text= {"❬"} />
-        <NavigationButton disabled={forward.length === 0} onClick={moveForwardDir} text={"❭"} />
-        <NavigationButton onClick={updateCurrentDir} text={"⟳"}/>
+        <NavigationButton disabled={isAtRoot} onClick={changeToParentDirectory} text={'❬'} />
+        <NavigationButton disabled={forward.length === 0} onClick={moveForwardDir} text={'❭'} />
+        <NavigationButton onClick={updateCurrentDir} text={'⟳'} />
     </div>
     <div class="searchbar">
         <SearchBar searchHandler={handleSearch} />

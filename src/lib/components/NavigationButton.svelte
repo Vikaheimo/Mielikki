@@ -4,7 +4,7 @@
     export let onClick: () => void;
 </script>
 
-<button disabled={disabled} on:click={onClick}>{text}</button>
+<button {disabled} on:click={onClick}>{text}</button>
 
 <style>
     button {
@@ -15,5 +15,9 @@
         width: 2rem;
         height: 2rem;
         text-align: center;
+    }
+
+    button:active {
+        background-color: #474747;
     }
 </style>
