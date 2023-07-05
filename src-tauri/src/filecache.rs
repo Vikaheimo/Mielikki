@@ -9,6 +9,7 @@ use std::{
 };
 use walkdir::WalkDir;
 
+#[cfg(not(test))]
 fn run_cache_on_interval(filecache: Arc<FileCache>) {
     tokio::spawn(async move {
         let mut interval = tokio::time::interval(Duration::from_secs(60));
@@ -43,16 +44,15 @@ impl FileCache {
         }
 
         filecache.read_cache_from_cache_file()?;
+
+        #[cfg(not(test))]
         run_cache_on_interval(Arc::clone(&filecache));
         Ok(filecache)
     }
 
     pub fn find_file(&self, name: &str) -> Option<Vec<FileData>> {
         let cache = self.cache.lock().unwrap();
-        Some(
-            cache
-                .get_vec(&name.to_lowercase())?.to_vec(),
-        )
+        Some(cache.get_vec(&name.to_lowercase())?.to_vec())
     }
 
     /// This function is expensive, gets called when creating a new instance of this struct.
@@ -147,7 +147,7 @@ impl FileCache {
         let mut csv_writer = csv::Writer::from_writer(buf_writer);
 
         let cache = self.cache.lock().unwrap();
-        for (_name, element) in cache.iter() {
+        for element in cache.iter_all().flat_map(|(_, v)| v) {
             csv_writer
                 .serialize(element)
                 .map_err(|_| CurrentDirError::CannotReadDir {
