@@ -8,7 +8,6 @@ use std::{
     sync::Arc,
 };
 
-#[derive(Debug)]
 pub struct CurrentDir {
     path: PathBuf,
     file_cache: Arc<filecache::FileCache>,
@@ -21,7 +20,7 @@ pub struct FolderData {
     pub is_at_root: bool,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub struct FileData {
     name: String,
     path: PathBuf,
@@ -34,16 +33,6 @@ impl From<walkdir::DirEntry> for FileData {
             name: value.file_name().to_string_lossy().to_string(),
             path: value.path().to_path_buf(),
             filetype: FileType::from(value.file_type()),
-        }
-    }
-}
-
-impl FileData {
-    pub fn from_cachedfile_with_string(cached_file: &filecache::CachedFile, name: String) -> Self {
-        FileData {
-            name,
-            path: cached_file.path.to_owned(),
-            filetype: cached_file.filetype,
         }
     }
 }
@@ -76,7 +65,10 @@ pub enum CurrentDirError {
     CannotReadDir {
         dir_name: String,
     },
-    CannotMoveToFile,
+    #[display(fmt = "Cannot move to directory {}", file_name)]
+    CannotMoveToFile {
+        file_name: String,
+    },
     IsntUTF8,
     CannotSerialize,
     CannotCreateFile,
@@ -107,8 +99,10 @@ impl CurrentDir {
 
     pub fn move_to_dir(&mut self, path: &Path, to_parent: bool) -> Result<(), CurrentDirError> {
         let parsed = CurrentDir::parse_path_to_absolute(path)?;
-        if !parsed.is_dir() {
-            return Err(CurrentDirError::CannotMoveToFile);
+        if !parsed.is_dir() && !to_parent {
+            return Err(CurrentDirError::CannotMoveToFile {
+                file_name: path.to_str().unwrap().to_string(),
+            });
         }
         self.path = parsed;
 
@@ -194,27 +188,5 @@ impl CurrentDir {
                 _ => false,
             })
             .collect::<Vec<FileData>>())
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::filecache::CachedFile;
-    use super::{FileData, FileType};
-    use std::path::Path;
-
-    #[test]
-    fn filedata_to_cachedfile() {
-        let cf = CachedFile {
-            path: Path::new("test").to_owned(),
-            filetype: FileType::Folder,
-        };
-        let got = FileData::from_cachedfile_with_string(&cf, "test".to_owned());
-        let model = FileData {
-            name: "test".to_owned(),
-            path: Path::new("test").to_owned(),
-            filetype: FileType::Folder,
-        };
-        assert_eq!(got, model)
     }
 }
