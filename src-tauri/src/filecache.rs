@@ -1,4 +1,4 @@
-use super::{CurrentDirError, FileData, FileType};
+use super::{CurrentDirError, FileData};
 use multimap::MultiMap;
 use std::{
     fs::File,
@@ -7,25 +7,8 @@ use std::{
     sync::{Arc, Mutex},
     time::Duration,
 };
+use trie_rs::{Trie, TrieBuilder};
 use walkdir::WalkDir;
-
-#[derive(Debug, PartialEq, Eq)]
-pub struct CachedFile {
-    pub path: PathBuf,
-    pub filetype: FileType,
-}
-
-impl CachedFile {
-    pub fn from_filedata(data: FileData) -> (String, CachedFile) {
-        (
-            data.name,
-            CachedFile {
-                path: data.path,
-                filetype: data.filetype,
-            },
-        )
-    }
-}
 
 fn run_cache_on_interval(filecache: Arc<FileCache>) {
     tokio::spawn(async move {
@@ -40,10 +23,9 @@ fn run_cache_on_interval(filecache: Arc<FileCache>) {
     });
 }
 
-#[derive(Debug)]
 pub struct FileCache {
     file_location: PathBuf,
-    cache: Mutex<MultiMap<String, CachedFile>>,
+    cache: Mutex<(MultiMap<String, FileData>, Trie<u8>)>,
 }
 
 impl FileCache {
@@ -51,7 +33,7 @@ impl FileCache {
         // Check that file can be opened, otherwise try to create new file
         let filecache = Arc::new(FileCache {
             file_location: location.clone(),
-            cache: Mutex::new(MultiMap::new()),
+            cache: Mutex::new((MultiMap::new(), TrieBuilder::new().build())),
         });
 
         if !filecache.check_file_parses() {
@@ -68,15 +50,20 @@ impl FileCache {
 
     pub fn find_file(&self, name: &str) -> Option<Vec<FileData>> {
         let cache = self.cache.lock().unwrap();
-        let files: Vec<_> = cache
-            .get_vec(name)?
+        let results: Vec<_> = cache
+            .1
+            .predictive_search(name.to_lowercase())
             .iter()
-            .map(|f| FileData::from_cachedfile_with_string(f, name.to_owned()))
+            .map(|u8s| std::str::from_utf8(u8s).unwrap())
+            .filter_map(|name| cache.0.get_vec(name))
+            .flat_map(|v| v.to_owned())
             .collect();
-        if files.is_empty() {
+
+        if results.is_empty() {
             return None;
         }
-        Some(files)
+
+        Some(results)
     }
 
     /// This function is expensive, gets called when creating a new instance of this struct.
@@ -93,13 +80,18 @@ impl FileCache {
         let new_data = csv_reader
             .deserialize::<FileData>()
             .map(|f| match f {
-                Ok(data) => Ok(CachedFile::from_filedata(data)),
+                Ok(data) => Ok((data.name.to_lowercase(), data)),
                 Err(_error) => Err(CurrentDirError::CannotSerialize),
             })
-            .collect::<Result<MultiMap<String, CachedFile>, CurrentDirError>>()?;
+            .collect::<Result<MultiMap<String, FileData>, CurrentDirError>>()?;
 
-        let mut data = self.cache.lock().unwrap();
-        *data = new_data;
+        let mut builder = TrieBuilder::new();
+        for name in new_data.iter().map(|(name, _)| name.as_str()) {
+            builder.push(name)
+        }
+        let new_search = builder.build();
+        let mut cache = self.cache.lock().unwrap();
+        *cache = (new_data, new_search);
 
         Ok(())
     }
@@ -109,14 +101,21 @@ impl FileCache {
             .into_iter()
             .filter_map(|e| e.ok())
             .map(FileData::from)
-            .map(CachedFile::from_filedata)
-            .collect::<MultiMap<String, CachedFile>>();
+            .map(|f| (f.name.clone().to_lowercase(), f))
+            .collect::<MultiMap<String, FileData>>();
+
+        let mut builder = TrieBuilder::new();
+        for name in new_data.iter().map(|(name, _)| name.as_str()) {
+            builder.push(name)
+        }
+        let new_search = builder.build();
+
         let mut cache = self.cache.lock().unwrap();
-        *cache = new_data;
+        *cache = (new_data, new_search);
     }
 
     /// Function to check that cache file is formatted properly
-    fn check_file_parses(&self) -> bool {
+    pub fn check_file_parses(&self) -> bool {
         let file = File::options()
             .read(true)
             .open(&self.file_location)
@@ -170,10 +169,7 @@ impl FileCache {
         let mut csv_writer = csv::Writer::from_writer(buf_writer);
 
         let cache = self.cache.lock().unwrap();
-        for element in cache
-            .iter()
-            .map(|(name, data)| FileData::from_cachedfile_with_string(data, name.to_owned()))
-        {
+        for (_name, element) in cache.0.iter() {
             csv_writer
                 .serialize(element)
                 .map_err(|_| CurrentDirError::CannotReadDir {
@@ -184,28 +180,5 @@ impl FileCache {
         std::fs::rename(tmp_file_path, &self.file_location)
             .map_err(|_| CurrentDirError::CannotCreateFile)?;
         Ok(())
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::{CachedFile, FileData, FileType};
-    use std::path::Path;
-
-    #[test]
-    fn cachedfile_from_filedata() {
-        let fd = FileData {
-            name: "test".to_owned(),
-            path: Path::new("test").to_owned(),
-            filetype: FileType::Folder,
-        };
-        let model = (
-            "test".to_owned(),
-            CachedFile {
-                path: Path::new("test").to_owned(),
-                filetype: FileType::Folder,
-            },
-        );
-        assert_eq!(model, CachedFile::from_filedata(fd));
     }
 }
