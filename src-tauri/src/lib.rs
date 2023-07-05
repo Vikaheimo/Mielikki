@@ -81,7 +81,7 @@ impl CurrentDir {
         let parsed_path = CurrentDir::parse_path_to_absolute(path).unwrap();
         CurrentDir {
             path: parsed_path,
-            file_cache: filecache::FileCache::new(Path::new("cache").to_path_buf()).unwrap(),
+            file_cache: filecache::FileCache::new(Path::new("cache/cache").to_path_buf()).unwrap(),
         }
     }
 

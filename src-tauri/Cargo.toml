@@ -24,3 +24,4 @@ tokio = { version = "1.29.1", features = ["full"] }
 # this feature is used for production builds or when `devPath` points to the filesystem
 # DO NOT REMOVE!!
 custom-protocol = ["tauri/custom-protocol"]
+benchmarking = []

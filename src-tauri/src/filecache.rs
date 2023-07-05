@@ -5,14 +5,13 @@ use std::{
     io::{BufReader, BufWriter},
     path::{Path, PathBuf},
     sync::{Arc, Mutex},
-    time::Duration,
 };
 use walkdir::WalkDir;
 
-#[cfg(not(test))]
+#[cfg(all(not(test), not(feature = "benchmarking")))]
 fn run_cache_on_interval(filecache: Arc<FileCache>) {
     tokio::spawn(async move {
-        let mut interval = tokio::time::interval(Duration::from_secs(60));
+        let mut interval = tokio::time::interval(std::time::Duration::from_secs(60));
 
         // Update filecache in intervals
         loop {
@@ -45,7 +44,7 @@ impl FileCache {
 
         filecache.read_cache_from_cache_file()?;
 
-        #[cfg(not(test))]
+        #[cfg(all(not(test), not(feature = "benchmarking")))]
         run_cache_on_interval(Arc::clone(&filecache));
         Ok(filecache)
     }
@@ -116,7 +115,7 @@ impl FileCache {
 
     /// This function is expensive, gets called when running filecache for the fist time
     fn update_filecache_file_with_new(&self) -> Result<(), CurrentDirError> {
-        let tmp_file_path = Path::new("cache.tmp");
+        let tmp_file_path = Path::new("cache/cache.tmp");
         let tempfile =
             File::create(tmp_file_path).map_err(|_| CurrentDirError::CannotCreateFile)?;
 
@@ -140,7 +139,7 @@ impl FileCache {
     }
 
     pub fn update_filecache_file_from_memory(&self) -> Result<(), CurrentDirError> {
-        let tmp_file_path = Path::new("cache.tmp");
+        let tmp_file_path = Path::new("cache/cache.tmp");
         let tempfile: File =
             File::create(tmp_file_path).map_err(|_| CurrentDirError::CannotCreateFile)?;
         let buf_writer = BufWriter::new(tempfile);
