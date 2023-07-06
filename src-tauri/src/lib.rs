@@ -27,6 +27,36 @@ pub struct FileData {
     filetype: FileType,
 }
 
+impl FileData {
+    fn new(name: &str, path: &Path, filetype: FileType) -> FileData {
+        FileData {
+            name: name.to_owned(),
+            path: path.to_owned(),
+            filetype,
+        }
+    }
+}
+
+impl Ord for FileData {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        (self.filetype, &self.name, &self.path).cmp(&(other.filetype, &other.name, &other.path))
+    }
+}
+
+impl PartialOrd for FileData {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        match self.filetype.partial_cmp(&other.filetype) {
+            Some(core::cmp::Ordering::Equal) => {}
+            ord => return ord,
+        }
+        match self.name.partial_cmp(&other.name) {
+            Some(core::cmp::Ordering::Equal) => {}
+            ord => return ord,
+        }
+        self.path.partial_cmp(&other.path)
+    }
+}
+
 impl From<walkdir::DirEntry> for FileData {
     fn from(value: walkdir::DirEntry) -> Self {
         FileData {
@@ -37,7 +67,7 @@ impl From<walkdir::DirEntry> for FileData {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum FileType {
     Folder,
     File,
@@ -139,6 +169,7 @@ impl CurrentDir {
                 filetype,
             })
         }
+        siblings.sort_unstable();
         Ok(siblings)
     }
 
@@ -176,7 +207,7 @@ impl CurrentDir {
         search_folders: bool,
         search_links: bool,
     ) -> Result<Vec<FileData>, CurrentDirError> {
-        Ok(self
+        let mut data = self
             .file_cache
             .find_file(name)
             .ok_or(CurrentDirError::SearchedFileNotFound)?
@@ -187,6 +218,80 @@ impl CurrentDir {
                 FileType::Link if search_links => true,
                 _ => false,
             })
-            .collect::<Vec<FileData>>())
+            .collect::<Vec<FileData>>();
+        data.sort_unstable();
+        Ok(data)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{FileData, FileType};
+    use std::path::Path;
+
+    #[test]
+    fn filedata_is_equal() {
+        let some = FileData {
+            name: String::from("asd"),
+            path: Path::new("/").to_owned(),
+            filetype: FileType::File,
+        };
+        assert_eq!(some, some);
+    }
+
+    #[test]
+    fn filedata_is_not_equal() {
+        let some = FileData {
+            name: String::from("asd"),
+            path: Path::new("/").to_owned(),
+            filetype: FileType::File,
+        };
+        let different_filetype = FileData {
+            name: String::from("asd"),
+            path: Path::new("/").to_owned(),
+            filetype: FileType::Folder,
+        };
+        let different_name = FileData {
+            name: String::from("asdf"),
+            path: Path::new("/").to_owned(),
+            filetype: FileType::File,
+        };
+        assert_ne!(some, different_filetype);
+        assert_ne!(some, different_name);
+    }
+
+    #[test]
+    fn filedata_sorts_name_and_filetype_correctly() {
+        let model = vec![
+            FileData::new("a", Path::new("asd"), FileType::Folder),
+            FileData::new("b", Path::new("asd"), FileType::Folder),
+            FileData::new("a", Path::new("asd"), FileType::File),
+            FileData::new("b", Path::new("asd"), FileType::File),
+            FileData::new("a", Path::new("asd"), FileType::Link),
+            FileData::new("b", Path::new("asd"), FileType::Link),
+        ];
+
+        let mut randomized = vec![
+            FileData::new("a", Path::new("asd"), FileType::File),
+            FileData::new("b", Path::new("asd"), FileType::Folder),
+            FileData::new("b", Path::new("asd"), FileType::File),
+            FileData::new("b", Path::new("asd"), FileType::Link),
+            FileData::new("a", Path::new("asd"), FileType::Link),
+            FileData::new("a", Path::new("asd"), FileType::Folder),
+        ];
+
+        randomized.sort_unstable();
+        assert_eq!(model, randomized);
+    }
+
+    #[test]
+    fn filetype_orders_correctly() {
+        let mut randomized = vec![FileType::Link, FileType::Folder, FileType::File];
+
+        let model = vec![FileType::Folder, FileType::File, FileType::Link];
+
+        randomized.sort_unstable();
+
+        assert_eq!(randomized, model)
     }
 }
