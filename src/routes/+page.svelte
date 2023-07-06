@@ -18,10 +18,13 @@
     });
 
     const handleFileClick = (data: Filedata) => {
-        if (data.filetype == 'File') {
-            return;
+        if (data.filetype === 'Folder') {
+            changeDirectory(data.path);
+        } else if (data.filetype === 'Link') {
+            changeDirectory(data.path, true)
+        } else {
+            // TODO, do something on file click?
         }
-        changeDirectory(data.path);
     };
 
     updateCurrentDir();
