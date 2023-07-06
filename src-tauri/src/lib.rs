@@ -169,6 +169,7 @@ impl CurrentDir {
                 filetype,
             })
         }
+        siblings.sort_unstable();
         Ok(siblings)
     }
 
@@ -206,7 +207,7 @@ impl CurrentDir {
         search_folders: bool,
         search_links: bool,
     ) -> Result<Vec<FileData>, CurrentDirError> {
-        Ok(self
+        let mut data = self
             .file_cache
             .find_file(name)
             .ok_or(CurrentDirError::SearchedFileNotFound)?
@@ -217,7 +218,9 @@ impl CurrentDir {
                 FileType::Link if search_links => true,
                 _ => false,
             })
-            .collect::<Vec<FileData>>())
+            .collect::<Vec<FileData>>();
+        data.sort_unstable();
+        Ok(data)
     }
 }
 
