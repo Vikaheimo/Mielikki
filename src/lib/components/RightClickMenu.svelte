@@ -79,7 +79,7 @@
     <script src="https://kit.fontawesome.com/87f235ba5f.js" crossorigin="anonymous"></script>
 </svelte:head>
 
-<style>                                                                                                                                                                                                                                                 
+<style>
     hr {
         border: none;
         border-bottom: 1px solid black;
