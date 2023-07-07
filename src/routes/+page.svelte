@@ -17,9 +17,9 @@
     });
 
     let fileItems: MenuItem[] = [
-        { icon: 'A', text: 'TODO', onClick: () => console.log('kissa') },
+        { icon: 'fa-solid fa-computer-mouse', text: 'Open', onClick: () => console.log('Open') },
         MenuItemHr,
-        { icon: 'A', text: 'ADD SOMETHING', onClick: () => console.log('kissa') }
+        { icon: 'fa-solid fa-trash-can', text: 'Delete', onClick: () => console.log('delete') }
     ];
     let folderItems: MenuItem[] = [
         {
@@ -27,7 +27,11 @@
             text: 'New Folder',
             onClick: () => console.log('Add folder')
         },
-        { icon: 'A', text: 'Test', onClick: () => console.log('kissa') }
+        {
+            icon: 'fa-solid fa-file-circle-plus',
+            text: 'New File',
+            onClick: () => console.log('Add file')
+        }
     ];
     let rightClickMenu: SvelteComponent;
     let openMenu: (event: MouseEvent) => void;
