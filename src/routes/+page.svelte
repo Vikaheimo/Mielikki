@@ -4,7 +4,10 @@
     import type { Filedata } from '$lib/DirFunctions';
     import { changeDirectory, updateCurrentDir } from '$lib/DirFunctions';
     import DirectoryStore from '$lib/stores/DirectoryStore';
-
+    import RightClickMenu from '$lib/components/RightClickMenu.svelte';
+    import type { MenuItem } from '$lib/components/Types';
+    import { MenuItemHr } from '$lib/components/Types';
+    
     let contents: Filedata[] = [];
     let dirName = '';
 
@@ -27,10 +30,17 @@
         }
     };
 
+    let menuItems: MenuItem[] = [
+        {"icon": "A", "text": "Kissa", "onClick": () => console.log("kissa")},
+        MenuItemHr,
+        {"icon": "A", "text": "Kissa", "onClick": () => console.log("kissa")}
+    ]
+
     updateCurrentDir();
 </script>
 
 <main>
+    <RightClickMenu menuItems={menuItems}/>
     <h1>Directory listing of <strong>{dirName}</strong></h1>
     <ul>
         {#each contents as file}
