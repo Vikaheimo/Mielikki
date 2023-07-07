@@ -5,3 +5,5 @@
 <NavBar />
 
 <slot />
+
+<svelte:body on:contextmenu|preventDefault />

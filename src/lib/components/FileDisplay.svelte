@@ -32,7 +32,7 @@
         line-height: 1.5;
     }
     div {
-        display: flex;
+        display: inline-flex;
         align-items: center;
     }
     h2 {
