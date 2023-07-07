@@ -15,7 +15,7 @@
     };
 
     export let displayMenu = false;
-    export let menuItems: MenuItem[] = [];
+    let menuItems: MenuItem[] = [];
 
     const calculateMenuSize = (element: HTMLElement) => {
         menuSize = {
@@ -28,7 +28,8 @@
         displayMenu = false;
     };
 
-    export const openMenu = (event: MouseEvent) => {
+    export const openMenu = (event: MouseEvent, data: MenuItem[]) => {
+        menuItems = data;
         displayMenu = true;
 
         windowSize = {
@@ -51,7 +52,11 @@
 </script>
 
 {#if displayMenu}
-    <nav use:calculateMenuSize style="position: absolute; top:{position.y}px; left:{position.x}px">
+    <nav 
+        use:calculateMenuSize 
+        style="position: absolute; top:{position.y}px; left:{position.x}px"
+        on:contextmenu|preventDefault
+    >
         <ul>
             {#each menuItems as item}
                 {#if item.text === 'hr'}
@@ -69,7 +74,7 @@
     </nav>
 {/if}
 
-<svelte:window on:contextmenu|preventDefault={openMenu} on:click={closeMenu} />
+<svelte:window on:click={closeMenu} />
 
 <style>
     hr {

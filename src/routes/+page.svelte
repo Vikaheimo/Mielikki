@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { onDestroy } from 'svelte';
+    import { SvelteComponent, onDestroy, onMount } from 'svelte';
     import FileDisplay from '$lib/components/FileDisplay.svelte';
     import type { Filedata } from '$lib/DirFunctions';
     import { changeDirectory, updateCurrentDir } from '$lib/DirFunctions';
@@ -16,6 +16,13 @@
         dirName = data.dirName;
     });
 
+    let rightClickMenu: SvelteComponent;
+    let openMenu: (event: MouseEvent, data: MenuItem[]) => void;
+
+    onMount(() => {
+        openMenu = rightClickMenu.openMenu
+    })
+
     onDestroy(() => {
         unSubscribe();
     });
@@ -30,21 +37,27 @@
         }
     };
 
-    let menuItems: MenuItem[] = [
+    let fileItems: MenuItem[] = [
         {"icon": "A", "text": "Kissa", "onClick": () => console.log("kissa")},
         MenuItemHr,
         {"icon": "A", "text": "Kissa", "onClick": () => console.log("kissa")}
+    ]
+
+    let otherItems: MenuItem[] = [
+        {"icon": "A", "text": "Koira", "onClick": () => console.log("kissa")},
+        MenuItemHr,
+        {"icon": "A", "text": "Koira", "onClick": () => console.log("kissa")}
     ]
 
     updateCurrentDir();
 </script>
 
 <main>
-    <RightClickMenu menuItems={menuItems}/>
+    <RightClickMenu bind:this={rightClickMenu}/>
     <h1>Directory listing of <strong>{dirName}</strong></h1>
     <ul>
         {#each contents as file}
-            <li>
+            <li on:contextmenu|preventDefault={(e) => openMenu(e, fileItems)}>
                 <FileDisplay filedata={file} onClick={handleFileClick} />
             </li>
         {/each}
