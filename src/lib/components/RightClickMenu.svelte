@@ -1,30 +1,57 @@
 <script lang="ts">
     import type { MenuItem } from './Types';
 
-    let pos = {
+    let position = {
         x: 0,
         y: 0
     };
-
-    let menuConfig = {
+    let menuSize = {
         height: 0,
         width: 0
     };
+    let windowSize = {
+        width: 0,
+        height: 0
+    };
 
-    let displayMenu = false;
+    export let displayMenu = false;
     export let menuItems: MenuItem[] = [];
 
-    const closeMenu = () => {
+    const calculateMenuSize = (element: HTMLElement) => {
+        menuSize = {
+            width: element.offsetWidth,
+            height: element.offsetHeight
+        };
+    };
+
+    export const closeMenu = () => {
         displayMenu = false;
     };
 
-    const openMenu = () => {
+    export const openMenu = (event: MouseEvent) => {
         displayMenu = true;
+
+        windowSize = {
+            width: window.innerWidth,
+            height: window.innerHeight
+        };
+        position = {
+            x: event.clientX,
+            y: event.clientY
+        };
+        // Handle page overflow, eg if menu elements would be larger than the available space
+        if (windowSize.height - position.y < menuSize.height) {
+            position.y = position.y - menuSize.height;
+        }
+
+        if (windowSize.width - position.x < menuSize.height) {
+            position.x = position.x - menuSize.width;
+        }
     };
 </script>
 
 {#if displayMenu}
-    <nav style="position: absolute; top:{pos.y}px; left:{pos.x}px">
+    <nav use:calculateMenuSize style="position: absolute; top:{position.y}px; left:{position.x}px">
         <ul>
             {#each menuItems as item}
                 {#if item.text === 'hr'}
