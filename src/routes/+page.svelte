@@ -7,7 +7,7 @@
     import RightClickMenu from '$lib/components/RightClickMenu.svelte';
     import type { MenuItem } from '$lib/components/Types';
     import { MenuItemHr } from '$lib/components/Types';
-    
+
     let contents: Filedata[] = [];
     let dirName = '';
 
@@ -16,12 +16,27 @@
         dirName = data.dirName;
     });
 
+    let fileItems: MenuItem[] = [
+        { icon: 'A', text: 'TODO', onClick: () => console.log('kissa') },
+        MenuItemHr,
+        { icon: 'A', text: 'ADD SOMETHING', onClick: () => console.log('kissa') }
+    ];
+    let folderItems: MenuItem[] = [
+        {
+            icon: 'fa-sharp fa-solid fa-folder-plus',
+            text: 'New Folder',
+            onClick: () => console.log('Add folder')
+        },
+        { icon: 'A', text: 'Test', onClick: () => console.log('kissa') }
+    ];
     let rightClickMenu: SvelteComponent;
-    let openMenu: (event: MouseEvent, data: MenuItem[]) => void;
-
+    let openMenu: (event: MouseEvent) => void;
+    let menuData = folderItems;
     onMount(() => {
-        openMenu = rightClickMenu.openMenu
-    })
+        openMenu = (event: MouseEvent) => {
+            rightClickMenu.openMenu(event, menuData);
+        };
+    });
 
     onDestroy(() => {
         unSubscribe();
@@ -31,42 +46,39 @@
         if (data.filetype === 'Folder') {
             changeDirectory(data.path);
         } else if (data.filetype === 'Link') {
-            changeDirectory(data.path, true)
+            changeDirectory(data.path, true);
         } else {
             // TODO, do something on file click?
         }
     };
 
-    let fileItems: MenuItem[] = [
-        {"icon": "A", "text": "Kissa", "onClick": () => console.log("kissa")},
-        MenuItemHr,
-        {"icon": "A", "text": "Kissa", "onClick": () => console.log("kissa")}
-    ]
-
-    let otherItems: MenuItem[] = [
-        {"icon": "A", "text": "Koira", "onClick": () => console.log("kissa")},
-        MenuItemHr,
-        {"icon": "A", "text": "Koira", "onClick": () => console.log("kissa")}
-    ]
-
     updateCurrentDir();
 </script>
 
-<main>
-    <RightClickMenu bind:this={rightClickMenu}/>
+<main on:contextmenu|preventDefault={(e) => openMenu(e)}>
+    <RightClickMenu bind:this={rightClickMenu} />
     <h1>Directory listing of <strong>{dirName}</strong></h1>
     <ul>
         {#each contents as file}
-            <li on:contextmenu|preventDefault={(e) => openMenu(e, fileItems)}>
+            <li
+                on:mouseenter={() => {
+                    menuData = fileItems;
+                }}
+                on:mouseleave={() => {
+                    menuData = folderItems;
+                }}
+            >
                 <FileDisplay filedata={file} onClick={handleFileClick} />
             </li>
+            <hr />
         {/each}
     </ul>
 </main>
 
 <style>
-    li {
-        margin-bottom: 0.5rem;
+    hr {
+        border: none;
+        margin: 5px 0px;
         border-bottom: 2px solid gray;
     }
 
@@ -78,5 +90,9 @@
 
     strong {
         font-weight: 900;
+    }
+
+    li {
+        display: inline;
     }
 </style>

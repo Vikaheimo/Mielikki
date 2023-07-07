@@ -52,8 +52,8 @@
 </script>
 
 {#if displayMenu}
-    <nav 
-        use:calculateMenuSize 
+    <nav
+        use:calculateMenuSize
         style="position: absolute; top:{position.y}px; left:{position.x}px"
         on:contextmenu|preventDefault
     >
@@ -75,6 +75,15 @@
 {/if}
 
 <svelte:window on:click={closeMenu} />
+<svelte:head>
+    <link
+        rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css"
+        integrity="sha512-KfkfwYDsLkIlwQp6LFnl8zNdLGxu9YAA1QvwINks4PhcElQSvqcyVLLD9aMhXd13uQjoXtEKNosOWaZqXgel0g=="
+        crossorigin="anonymous"
+        referrerpolicy="no-referrer"
+    />
+</svelte:head>
 
 <style>
     hr {
@@ -86,7 +95,7 @@
     nav {
         display: inline-flex;
         border: 1px black solid;
-        width: 170px;
+        max-width: 500px;
         background-color: #2c2c2c;
         border-radius: 10px;
         overflow: hidden;
@@ -107,10 +116,13 @@
         color: #eaeaea;
         font-size: 1rem;
         width: 100%;
-        height: 30px;
+        min-height: 30px;
         text-align: left;
         border: 0px;
         background-color: #2c2c2c;
+        word-break: break-all;
+        display: inline-flex;
+        align-items: center;
     }
 
     button:hover {
