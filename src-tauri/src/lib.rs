@@ -7,6 +7,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
+#[derive(Debug)]
 pub struct CurrentDir {
     path: PathBuf,
     file_cache: filecache::FileCache,
@@ -56,7 +57,19 @@ impl PartialOrd for FileData {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+impl TryFrom<&filecache::CachedFile> for FileData {
+    type Error = CurrentDirError;
+
+    fn try_from(value: &filecache::CachedFile) -> Result<Self, Self::Error> {
+        Ok(FileData {
+            name: value.name.to_owned(),
+            path: Path::new(&value.path).to_path_buf(),
+            filetype: FileType::try_from(value.filetype.as_str())?,
+        })
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Display)]
 pub enum FileType {
     Folder,
     File,
@@ -71,6 +84,19 @@ impl From<std::fs::FileType> for FileType {
             FileType::Link
         } else {
             FileType::File
+        }
+    }
+}
+
+impl TryFrom<&str> for FileType {
+    type Error = CurrentDirError;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        match value.to_lowercase().as_str() {
+            "folder" => Ok(FileType::Folder),
+            "file" => Ok(FileType::File),
+            "link" => Ok(FileType::Link),
+            _ => Err(CurrentDirError::CannotSerialize),
         }
     }
 }
@@ -189,9 +215,9 @@ impl CurrentDir {
         self.path.parent().is_none()
     }
 
-    pub fn search_files(
+    pub async fn search_files(
         &self,
-        name: &str,
+        name: String,
         search_files: bool,
         search_folders: bool,
         search_links: bool,
@@ -199,6 +225,7 @@ impl CurrentDir {
         let mut data = self
             .file_cache
             .find_file(name)
+            .await
             .ok_or(CurrentDirError::SearchedFileNotFound)?
             .into_iter()
             .filter(|file| match file.filetype {
@@ -215,6 +242,8 @@ impl CurrentDir {
 
 #[cfg(test)]
 mod tests {
+    use crate::filecache::CachedFile;
+
     use super::{FileData, FileType};
     use std::path::Path;
 
@@ -282,5 +311,35 @@ mod tests {
         randomized.sort_unstable();
 
         assert_eq!(randomized, model)
+    }
+
+    #[test]
+    fn filetype_from_string() {
+        let file = "File";
+        let folder = "FolDEr";
+        let link = "link";
+
+        assert_eq!(FileType::File, FileType::try_from(file).unwrap());
+        assert_eq!(FileType::Folder, FileType::try_from(folder).unwrap());
+        assert_eq!(FileType::Link, FileType::try_from(link).unwrap());
+    }
+
+    #[test]
+    #[should_panic]
+    fn filetype_from_garbage() {
+        let something = "not valid";
+        FileType::try_from(something).unwrap();
+    }
+
+    #[test]
+    fn filedata_from_CachedFile() {
+        let test = CachedFile {
+            id: 1,
+            name: String::from("test"),
+            path: String::from("/some/test/path"),
+            filetype: String::from("Folder"),
+        };
+
+        assert_eq!(FileData::new("test", Path::new("/some/test/path"), FileType::Folder), FileData::try_from(&test).unwrap())
     }
 }

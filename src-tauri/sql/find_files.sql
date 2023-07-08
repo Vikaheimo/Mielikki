@@ -1,0 +1,1 @@
+SELECT * FROM file_cache WHERE name = '?1';
