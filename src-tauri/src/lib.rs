@@ -5,12 +5,11 @@ use serde::{Deserialize, Serialize};
 use std::{
     fs,
     path::{Path, PathBuf},
-    sync::Arc,
 };
 
 pub struct CurrentDir {
     path: PathBuf,
-    file_cache: Arc<filecache::FileCache>,
+    file_cache: filecache::FileCache,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -57,16 +56,6 @@ impl PartialOrd for FileData {
     }
 }
 
-impl From<walkdir::DirEntry> for FileData {
-    fn from(value: walkdir::DirEntry) -> Self {
-        FileData {
-            name: value.file_name().to_string_lossy().to_string(),
-            path: value.path().to_path_buf(),
-            filetype: FileType::from(value.file_type()),
-        }
-    }
-}
-
 #[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum FileType {
     Folder,
@@ -107,11 +96,11 @@ pub enum CurrentDirError {
 }
 
 impl CurrentDir {
-    pub fn new(path: &Path) -> Self {
+    pub async fn new(path: &Path) -> Self {
         let parsed_path = CurrentDir::parse_path_to_absolute(path).unwrap();
         CurrentDir {
             path: parsed_path,
-            file_cache: filecache::FileCache::new(Path::new("cache/cache").to_path_buf()).unwrap(),
+            file_cache: filecache::FileCache::new(Path::new("cache/cache").to_path_buf()).await,
         }
     }
 

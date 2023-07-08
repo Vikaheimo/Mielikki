@@ -54,7 +54,9 @@ fn find_file(
 #[tokio::main]
 async fn main() {
     tauri::Builder::default()
-        .manage(OuterCurrentDir(Mutex::new(CurrentDir::new(Path::new(".")))))
+        .manage(OuterCurrentDir(Mutex::new(
+            CurrentDir::new(Path::new(".")).await,
+        )))
         .invoke_handler(tauri::generate_handler![
             get_current_folder,
             move_to_folder,
