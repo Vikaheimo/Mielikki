@@ -1,1 +1,1 @@
-SELECT * FROM file_cache WHERE name = '?1';
+SELECT id, name, path, filetype FROM file_cache WHERE name = :name;
