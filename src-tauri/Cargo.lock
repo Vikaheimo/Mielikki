@@ -1877,6 +1877,7 @@ dependencies = [
  "tauri-build",
  "tokio",
  "tokio-rusqlite",
+ "walkdir",
 ]
 
 [[package]]

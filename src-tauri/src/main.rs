@@ -4,13 +4,15 @@
 use mielikki::FileData;
 use mielikki::{CurrentDir, CurrentDirError, FolderData};
 use std::path::{Path, PathBuf};
-use std::sync::{Arc};
+use std::sync::Arc;
 use tokio::sync::Mutex;
 
 pub struct OuterCurrentDir(pub Arc<Mutex<CurrentDir>>);
 
 #[tauri::command]
-async fn get_current_folder(state: tauri::State<'_, OuterCurrentDir>) -> Result<FolderData, CurrentDirError> {
+async fn get_current_folder(
+    state: tauri::State<'_, OuterCurrentDir>,
+) -> Result<FolderData, CurrentDirError> {
     let state_guard = state.0.lock().await;
 
     state_guard.get_folder_data()
@@ -28,7 +30,9 @@ async fn move_to_folder(
 }
 
 #[tauri::command]
-async fn move_to_parent_folder(state: tauri::State<'_, OuterCurrentDir>) -> Result<String, CurrentDirError> {
+async fn move_to_parent_folder(
+    state: tauri::State<'_, OuterCurrentDir>,
+) -> Result<String, CurrentDirError> {
     let mut state_guard = state.0.lock().await;
 
     state_guard.move_to_parent_dir()

@@ -29,3 +29,4 @@ build/
 # Project cache files
 cache/
 *.db
+*.db-journal

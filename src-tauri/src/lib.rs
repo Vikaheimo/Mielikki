@@ -28,7 +28,7 @@ pub struct FileData {
 }
 
 impl FileData {
-    fn new(name: &str, path: &Path, filetype: FileType) -> FileData {
+    pub fn new(name: &str, path: &Path, filetype: FileType) -> FileData {
         FileData {
             name: name.to_owned(),
             path: path.to_owned(),
@@ -66,6 +66,16 @@ impl TryFrom<&filecache::CachedFile> for FileData {
             path: Path::new(&value.path).to_path_buf(),
             filetype: FileType::try_from(value.filetype.as_str())?,
         })
+    }
+}
+
+impl From<walkdir::DirEntry> for FileData {
+    fn from(value: walkdir::DirEntry) -> Self {
+        FileData {
+            name: value.file_name().to_string_lossy().to_string(),
+            path: value.path().to_path_buf(),
+            filetype: FileType::from(value.file_type()),
+        }
     }
 }
 
@@ -126,7 +136,7 @@ impl CurrentDir {
         let parsed_path = CurrentDir::parse_path_to_absolute(path).unwrap();
         CurrentDir {
             path: parsed_path,
-            file_cache: filecache::FileCache::new(Path::new("cache/cache").to_path_buf()).await,
+            file_cache: filecache::FileCache::new().await,
         }
     }
 
@@ -332,7 +342,7 @@ mod tests {
     }
 
     #[test]
-    fn filedata_from_CachedFile() {
+    fn filedata_from_cachedfile() {
         let test = CachedFile {
             id: 1,
             name: String::from("test"),
@@ -340,6 +350,9 @@ mod tests {
             filetype: String::from("Folder"),
         };
 
-        assert_eq!(FileData::new("test", Path::new("/some/test/path"), FileType::Folder), FileData::try_from(&test).unwrap())
+        assert_eq!(
+            FileData::new("test", Path::new("/some/test/path"), FileType::Folder),
+            FileData::try_from(&test).unwrap()
+        )
     }
 }

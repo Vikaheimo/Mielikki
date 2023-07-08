@@ -1,0 +1,1 @@
+INSERT INTO file_cache (id, name, filetype, path) VALUES (?1, ?2, ?3, ?4);

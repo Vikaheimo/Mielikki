@@ -1,7 +1,8 @@
-use super::{CurrentDirError, FileData};
-use std::path::{Path, PathBuf};
+use super::FileData;
+use std::path::Path;
 use tokio::sync::Mutex;
 use tokio_rusqlite::Connection;
+use rusqlite::backup;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CachedFile {
@@ -14,7 +15,7 @@ pub struct CachedFile {
 impl CachedFile {
     pub fn from_filedata(value: FileData, id: i32) -> Self {
         CachedFile {
-            id: id,
+            id,
             name: value.name,
             path: value.path.to_string_lossy().to_string(),
             filetype: value.filetype.to_string(),
@@ -26,32 +27,22 @@ impl CachedFile {
 pub struct FileCache {
     database: Mutex<Connection>,
 }
-const DATABSE_FILE: &'static str = "mielikki.db";
+const DATABASE_FILE: &str = "mielikki.db";
 
 impl FileCache {
-    pub async fn new(location: PathBuf) -> Self {
-        let first_time = !Path::new(DATABSE_FILE).exists();
-        let connection = Connection::open(DATABSE_FILE).await.unwrap();
+    pub async fn new() -> Self {
+        let first_time = !Path::new(DATABASE_FILE).exists();
+        let connection = Connection::open_in_memory().await.unwrap();
+        let cache: FileCache = FileCache {
+            database: Mutex::new(connection),
+        };
 
         if first_time {
-            connection
-                .call(|conn| {
-                    conn.execute(
-                        "CREATE TABLE file_cache (
-                        id          INTEGER PRIMARY KEY,
-                        name        TEXT NOT NULL,
-                        filetype    TEXT NOT NULL,
-                        path        TEXT NOT NULL
-                    )",
-                        [],
-                    )
-                })
-                .await
-                .unwrap();
+            cache.create_cache_table().await.unwrap();
+            cache.cache_all_files().await.unwrap();
         }
-        FileCache {
-            database: Mutex::new(connection),
-        }
+
+        cache
     }
 
     pub async fn find_file(&self, name: String) -> Option<Vec<FileData>> {
@@ -87,8 +78,45 @@ impl FileCache {
             .ok()
     }
 
-    pub fn cache_all_files(&self) {
-        unimplemented!()
+    /// Should be called only when initializing the database for the first time
+    async fn cache_all_files(&self) -> Result<(), tokio_rusqlite::Error> {
+        let db = self.database.lock().await;
+        let t = std::time::Instant::now();
+        db.call(move |conn| {
+            for entry in walkdir::WalkDir::new("/")
+                .into_iter()
+                .filter_map(|e| e.ok())
+                .map(FileData::from)
+                .enumerate()
+                .map(|(i, filedata)| CachedFile::from_filedata(filedata, i as i32))
+            {
+                conn.execute(
+                    "INSERT INTO file_cache (id, name, filetype, path) VALUES (?1, ?2, ?3, ?4)",
+                    (entry.id, entry.name, entry.path, entry.filetype),
+                )?;
+            }
+            println!("{}", t.elapsed().as_secs());
+            Ok(())
+        })
+        .await
+    }
+
+    async fn create_cache_table(&self) -> Result<usize, tokio_rusqlite::Error> {
+        self.database
+            .lock()
+            .await
+            .call(|conn| {
+                conn.execute(
+                    "CREATE TABLE file_cache (
+                        id          INTEGER PRIMARY KEY,
+                        name        TEXT NOT NULL,
+                        filetype    TEXT NOT NULL,
+                        path        TEXT NOT NULL
+                    )",
+                    [],
+                )
+            })
+            .await
     }
 }
 
