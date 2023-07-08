@@ -40,6 +40,7 @@ impl FileCache {
         if first_time {
             cache.create_cache_table().await.unwrap();
             cache.cache_all_files().await.unwrap();
+            cache.backup_database_to_file().await.unwrap();
         }
 
         cache
@@ -117,6 +118,21 @@ impl FileCache {
                 )
             })
             .await
+    }
+
+    pub async fn backup_database_to_file(&self) -> Result<(), tokio_rusqlite::Error> {
+        let t = std::time::Instant::now();
+        let src = self.database.lock().await;
+        let res = src.call(|memory_conn| {
+            let mut backup_connection = rusqlite::Connection::open(DATABASE_FILE)?;
+            let backup = backup::Backup::new(&memory_conn, &mut backup_connection)?;
+            backup.run_to_completion(5, std::time::Duration::from_millis(10), None)?;
+
+            Ok(())
+        }).await;
+        println!("{:?}", res);
+        println!("{}", t.elapsed().as_secs());
+        Ok(())
     }
 }
 
