@@ -1,6 +1,6 @@
 use super::FileData;
 use rusqlite::{backup, named_params};
-use std::path::Path;
+use std::{path::Path, sync::Arc};
 use tokio::sync::Mutex;
 use tokio_rusqlite::Connection;
 
@@ -23,6 +23,18 @@ impl CachedFile {
     }
 }
 
+fn cache_files_on_interval(cache: Arc<FileCache>) {
+    tokio::spawn(async move {
+        let secondary_cache = FileCache::create_secondary().await;
+        loop {
+            // TODO, handle errors
+            secondary_cache.cache_all_files().await.unwrap();
+            secondary_cache.backup_database_to_file().await.unwrap();
+            cache.read_database_from_backup().await.unwrap();
+        }
+    });
+}
+
 #[derive(Debug)]
 pub struct FileCache {
     database: Mutex<Connection>,
@@ -30,7 +42,7 @@ pub struct FileCache {
 const DATABASE_FILE: &str = "mielikki.db";
 
 impl FileCache {
-    pub async fn new() -> Self {
+    pub async fn new() -> Arc<Self> {
         let first_time = !Path::new(DATABASE_FILE).exists();
         let connection = Connection::open_in_memory().await.unwrap();
         let cache: FileCache = FileCache {
@@ -44,7 +56,17 @@ impl FileCache {
         } else {
             cache.read_database_from_backup().await.unwrap();
         }
+        let data = Arc::new(cache);
+        cache_files_on_interval(Arc::clone(&data));
+        data
+    }
 
+    pub async fn create_secondary() -> Self {
+        let connection = Connection::open_in_memory().await.unwrap();
+        let cache: FileCache = FileCache {
+            database: Mutex::new(connection),
+        };
+        cache.create_cache_table().await.unwrap();
         cache
     }
 
@@ -88,6 +110,8 @@ impl FileCache {
 
     /// Should be called only when initializing the database for the first time
     async fn cache_all_files(&self) -> Result<(), tokio_rusqlite::Error> {
+        self.clear_database().await?;
+        self.create_cache_table().await?;
         let db = self.database.lock().await;
 
         db.call(move |conn| {
@@ -130,7 +154,7 @@ impl FileCache {
         let src = self.database.lock().await;
         src.call(|memory_conn| {
             let mut backup_conn = rusqlite::Connection::open(DATABASE_FILE)?;
-            let backup = backup::Backup::new(&memory_conn, &mut backup_conn)?;
+            let backup = backup::Backup::new(memory_conn, &mut backup_conn)?;
             backup.run_to_completion(100, std::time::Duration::from_millis(0), None)?;
 
             Ok(())
@@ -152,6 +176,17 @@ impl FileCache {
         .await?;
 
         Ok(())
+    }
+
+    async fn clear_database(&self) -> Result<(), tokio_rusqlite::Error> {
+        let db = self.database.lock().await;
+
+        db.call(|conn| {
+            conn.execute("DROP TABLE file_cache", [])?;
+
+            Ok(())
+        })
+        .await
     }
 }
 

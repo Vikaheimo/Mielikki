@@ -5,12 +5,13 @@ use serde::{Deserialize, Serialize};
 use std::{
     fs,
     path::{Path, PathBuf},
+    sync::Arc,
 };
 
 #[derive(Debug)]
 pub struct CurrentDir {
     path: PathBuf,
-    file_cache: filecache::FileCache,
+    file_cache: Arc<filecache::FileCache>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
