@@ -19,6 +19,7 @@ export type SearchData = {
     files: boolean;
     folders: boolean;
     links: boolean;
+    exact: boolean;
 };
 
 export const updateCurrentDir = (): void => {
