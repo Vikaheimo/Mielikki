@@ -51,9 +51,12 @@ async fn find_file(
     files: bool,
     folders: bool,
     links: bool,
+    exact: bool,
 ) -> Result<Vec<FileData>, CurrentDirError> {
     let state_guard = state.0.lock().await;
-    state_guard.search_files(name, files, folders, links).await
+    state_guard
+        .search_files(name, files, folders, links, exact)
+        .await
 }
 
 #[tokio::main]

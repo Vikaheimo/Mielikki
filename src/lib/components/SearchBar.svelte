@@ -9,6 +9,7 @@
             files: formData.get('file') === 'on',
             folders: formData.get('folder') === 'on',
             links: formData.get('link') === 'on',
+            exact: formData.get('exact') === 'on',
             name: formData.get('search') as string
         };
         searchHandler(data);
@@ -31,6 +32,11 @@
         <div>
             <input type="checkbox" id="link" checked={true} name="link" />
             <label for="link">Links</label>
+        </div>
+
+        <div>
+            <input type="checkbox" id="excact" checked={true} name="excact" />
+            <label for="excact">Exact matches</label>
         </div>
     </div>
 </form>

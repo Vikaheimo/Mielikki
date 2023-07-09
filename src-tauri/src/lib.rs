@@ -232,10 +232,11 @@ impl CurrentDir {
         search_files: bool,
         search_folders: bool,
         search_links: bool,
+        exact: bool,
     ) -> Result<Vec<FileData>, CurrentDirError> {
         let mut data = self
             .file_cache
-            .find_file(name, true)
+            .find_file(name, exact)
             .await
             .ok_or(CurrentDirError::SearchedFileNotFound)?
             .into_iter()
