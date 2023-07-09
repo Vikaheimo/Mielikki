@@ -70,17 +70,17 @@ impl FileCache {
         cache
     }
 
-    pub async fn find_file(&self, name: String) -> Option<Vec<FileData>> {
+    pub async fn find_file(&self, name: String, exact: bool) -> Option<Vec<FileData>> {
         let db = self.database.lock().await;
-
+        let search = name.clone();
         let data = db
             .call(move |conn| {
                 Ok({
                     let mut statement = conn.prepare(
-                        "SELECT id, name, path, filetype FROM file_cache WHERE name = :name",
+                        "SELECT id, name, path, filetype FROM file_cache WHERE name LIKE :name",
                     )?;
                     let files = statement
-                        .query_map(named_params! {":name": name.to_lowercase()}, |row| {
+                        .query_map(named_params! {":name": format!("{}%", search)}, |row| {
                             Ok(CachedFile {
                                 id: row.get(0)?,
                                 name: row.get(1)?,
@@ -102,6 +102,7 @@ impl FileCache {
 
         let asd = data
             .iter()
+            .filter(|file| !exact || file.name.eq(&name))
             .map(FileData::try_from)
             .collect::<Result<Vec<FileData>, _>>();
         println!("Data: {:?}", &asd);

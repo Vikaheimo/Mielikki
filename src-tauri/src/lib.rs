@@ -235,7 +235,7 @@ impl CurrentDir {
     ) -> Result<Vec<FileData>, CurrentDirError> {
         let mut data = self
             .file_cache
-            .find_file(name)
+            .find_file(name, true)
             .await
             .ok_or(CurrentDirError::SearchedFileNotFound)?
             .into_iter()
