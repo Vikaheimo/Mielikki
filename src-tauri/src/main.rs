@@ -4,57 +4,64 @@
 use mielikki::FileData;
 use mielikki::{CurrentDir, CurrentDirError, FolderData};
 use std::path::{Path, PathBuf};
-use std::sync::Mutex;
+use std::sync::Arc;
+use tokio::sync::Mutex;
 
-pub struct OuterCurrentDir(pub Mutex<CurrentDir>);
+pub struct OuterCurrentDir(pub Arc<Mutex<CurrentDir>>);
 
 #[tauri::command]
-fn get_current_folder(state: tauri::State<OuterCurrentDir>) -> Result<FolderData, CurrentDirError> {
-    let state_guard = state.0.lock().unwrap();
+async fn get_current_folder(
+    state: tauri::State<'_, OuterCurrentDir>,
+) -> Result<FolderData, CurrentDirError> {
+    let state_guard = state.0.lock().await;
 
     state_guard.get_folder_data()
 }
 
 #[tauri::command]
-fn move_to_folder(
-    state: tauri::State<OuterCurrentDir>,
+async fn move_to_folder(
+    state: tauri::State<'_, OuterCurrentDir>,
     folder_path: String,
     to_parent: bool,
 ) -> Result<(), CurrentDirError> {
-    let mut state_guard = state.0.lock().unwrap();
+    let mut state_guard = state.0.lock().await;
 
     state_guard.move_to_dir(&PathBuf::from(folder_path), to_parent)
 }
 
 #[tauri::command]
-fn move_to_parent_folder(state: tauri::State<OuterCurrentDir>) -> Result<String, CurrentDirError> {
-    let mut state_guard = state.0.lock().unwrap();
+async fn move_to_parent_folder(
+    state: tauri::State<'_, OuterCurrentDir>,
+) -> Result<String, CurrentDirError> {
+    let mut state_guard = state.0.lock().await;
 
     state_guard.move_to_parent_dir()
 }
 
 #[tauri::command]
-fn current_dir_is_root(state: tauri::State<OuterCurrentDir>) -> bool {
-    let state_guard = state.0.lock().unwrap();
-    state_guard.current_dir_is_root()
+async fn current_dir_is_root(state: tauri::State<'_, OuterCurrentDir>) -> Result<bool, ()> {
+    let state_guard = state.0.lock().await;
+    Ok(state_guard.current_dir_is_root())
 }
 
 #[tauri::command]
-fn find_file(
-    state: tauri::State<OuterCurrentDir>,
+async fn find_file(
+    state: tauri::State<'_, OuterCurrentDir>,
     name: String,
     files: bool,
     folders: bool,
     links: bool,
 ) -> Result<Vec<FileData>, CurrentDirError> {
-    let state_guard = state.0.lock().unwrap();
-    state_guard.search_files(&name, files, folders, links)
+    let state_guard = state.0.lock().await;
+    state_guard.search_files(name, files, folders, links).await
 }
 
 #[tokio::main]
 async fn main() {
     tauri::Builder::default()
-        .manage(OuterCurrentDir(Mutex::new(CurrentDir::new(Path::new(".")))))
+        .manage(OuterCurrentDir(Arc::new(Mutex::new(
+            CurrentDir::new(Path::new(".")).await,
+        ))))
         .invoke_handler(tauri::generate_handler![
             get_current_folder,
             move_to_folder,

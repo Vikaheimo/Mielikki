@@ -1,161 +1,217 @@
-use super::{CurrentDirError, FileData};
-use multimap::MultiMap;
-use std::{
-    fs::File,
-    io::{BufReader, BufWriter},
-    path::{Path, PathBuf},
-    sync::{Arc, Mutex},
-};
-use walkdir::WalkDir;
+use super::FileData;
+use rusqlite::{backup, named_params};
+use std::{path::Path, sync::Arc};
+use tokio::sync::Mutex;
+use tokio_rusqlite::Connection;
 
-#[cfg(all(not(test), not(feature = "benchmarking")))]
-fn run_cache_on_interval(filecache: Arc<FileCache>) {
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CachedFile {
+    pub id: i32,
+    pub name: String,
+    pub path: String,
+    pub filetype: String,
+}
+
+impl CachedFile {
+    pub fn from_filedata(value: FileData, id: i32) -> Self {
+        CachedFile {
+            id,
+            name: value.name,
+            path: value.path.to_string_lossy().to_string(),
+            filetype: value.filetype.to_string(),
+        }
+    }
+}
+
+fn cache_files_on_interval(cache: Arc<FileCache>) {
     tokio::spawn(async move {
-        let mut interval = tokio::time::interval(std::time::Duration::from_secs(60));
-
-        // Update filecache in intervals
+        let secondary_cache = FileCache::create_secondary().await;
         loop {
-            interval.tick().await;
-            filecache.update_memory_cache();
-            let _ = filecache.update_filecache_file_from_memory();
+            // TODO, handle errors
+            secondary_cache.cache_all_files().await.unwrap();
+            secondary_cache.backup_database_to_file().await.unwrap();
+            cache.read_database_from_backup().await.unwrap();
         }
     });
 }
 
+#[derive(Debug)]
 pub struct FileCache {
-    file_location: PathBuf,
-    cache: Mutex<MultiMap<String, FileData>>,
+    database: Mutex<Connection>,
 }
+const DATABASE_FILE: &str = "mielikki.db";
 
 impl FileCache {
-    pub fn new(location: PathBuf) -> Result<Arc<Self>, CurrentDirError> {
-        // Check that file can be opened, otherwise try to create new file
-        let filecache = Arc::new(FileCache {
-            file_location: location.clone(),
-            cache: Mutex::new(MultiMap::new()),
-        });
+    pub async fn new() -> Arc<Self> {
+        let first_time = !Path::new(DATABASE_FILE).exists();
+        let connection = Connection::open_in_memory().await.unwrap();
+        let cache: FileCache = FileCache {
+            database: Mutex::new(connection),
+        };
 
-        if !filecache.check_file_parses() {
-            let _ = File::create(&location).map_err(|_| CurrentDirError::CannotReadDir {
-                dir_name: location.to_string_lossy().to_string(),
-            })?;
-            filecache.update_filecache_file_with_new()?;
+        if first_time {
+            cache.create_cache_table().await.unwrap();
+            cache.cache_all_files().await.unwrap();
+            cache.backup_database_to_file().await.unwrap();
+        } else {
+            cache.read_database_from_backup().await.unwrap();
         }
-
-        filecache.read_cache_from_cache_file()?;
-
-        #[cfg(all(not(test), not(feature = "benchmarking")))]
-        run_cache_on_interval(Arc::clone(&filecache));
-        Ok(filecache)
+        let data = Arc::new(cache);
+        cache_files_on_interval(Arc::clone(&data));
+        data
     }
 
-    pub fn find_file(&self, name: &str) -> Option<Vec<FileData>> {
-        let cache = self.cache.lock().unwrap();
-        Some(cache.get_vec(&name.to_lowercase())?.to_vec())
+    pub async fn create_secondary() -> Self {
+        let connection = Connection::open_in_memory().await.unwrap();
+        let cache: FileCache = FileCache {
+            database: Mutex::new(connection),
+        };
+        cache.create_cache_table().await.unwrap();
+        cache
     }
 
-    /// This function is expensive, gets called when creating a new instance of this struct.
-    fn read_cache_from_cache_file(&self) -> Result<(), CurrentDirError> {
-        let file = File::options()
-            .read(true)
-            .open(&self.file_location)
-            .map_err(|_| CurrentDirError::CannotReadDir {
-                dir_name: self.file_location.to_string_lossy().to_string(),
-            })?;
+    pub async fn find_file(&self, name: String) -> Option<Vec<FileData>> {
+        let db = self.database.lock().await;
 
-        let buf_reader = BufReader::new(file);
-        let mut csv_reader = csv::Reader::from_reader(buf_reader);
-        let new_data = csv_reader
-            .deserialize::<FileData>()
-            .map(|f| match f {
-                Ok(data) => Ok((data.name.to_lowercase(), data)),
-                Err(_error) => Err(CurrentDirError::CannotSerialize),
+        let data = db
+            .call(move |conn| {
+                Ok({
+                    let mut statement = conn.prepare(
+                        "SELECT id, name, path, filetype FROM file_cache WHERE name = :name",
+                    )?;
+                    let files = statement
+                        .query_map(named_params! {":name": name.to_lowercase()}, |row| {
+                            Ok(CachedFile {
+                                id: row.get(0)?,
+                                name: row.get(1)?,
+                                path: row.get(2)?,
+                                filetype: row.get(3)?,
+                            })
+                        })?
+                        .collect::<Result<Vec<CachedFile>, rusqlite::Error>>()?;
+
+                    Ok::<_, rusqlite::Error>(files)
+                })
             })
-            .collect::<Result<MultiMap<String, FileData>, CurrentDirError>>()?;
-
-        let mut cache = self.cache.lock().unwrap();
-        *cache = new_data;
-
-        Ok(())
-    }
-
-    pub fn update_memory_cache(&self) {
-        let new_data = WalkDir::new("/")
-            .into_iter()
-            .filter_map(|e| e.ok())
-            .map(FileData::from)
-            .map(|f| (f.name.clone().to_lowercase(), f))
-            .collect::<MultiMap<String, FileData>>();
-
-        let mut cache = self.cache.lock().unwrap();
-        *cache = new_data;
-    }
-
-    /// Function to check that cache file is formatted properly
-    pub fn check_file_parses(&self) -> bool {
-        let file = File::options()
-            .read(true)
-            .open(&self.file_location)
-            .map_err(|_| CurrentDirError::CannotReadDir {
-                dir_name: self.file_location.to_string_lossy().to_string(),
-            });
-        if file.is_err() {
-            return false;
+            .await
+            .unwrap()
+            .unwrap();
+        if data.is_empty() {
+            return None;
         }
 
-        let buf_reader = BufReader::new(file.unwrap());
-        let mut csv_reader = csv::Reader::from_reader(buf_reader);
-        for entry in csv_reader.deserialize::<FileData>() {
-            if entry.is_err() {
-                return false;
+        let asd = data
+            .iter()
+            .map(FileData::try_from)
+            .collect::<Result<Vec<FileData>, _>>();
+        println!("Data: {:?}", &asd);
+        asd.ok()
+    }
+
+    /// Should be called only when initializing the database for the first time
+    async fn cache_all_files(&self) -> Result<(), tokio_rusqlite::Error> {
+        self.clear_database().await?;
+        self.create_cache_table().await?;
+        let db = self.database.lock().await;
+
+        db.call(move |conn| {
+            for entry in walkdir::WalkDir::new("/")
+                .into_iter()
+                .filter_map(|e| e.ok())
+                .map(FileData::from)
+                .enumerate()
+                .map(|(i, filedata)| CachedFile::from_filedata(filedata, i as i32))
+            {
+                conn.execute(
+                    "INSERT INTO file_cache (id, name, path, filetype) VALUES (?1, ?2, ?3, ?4)",
+                    (entry.id, entry.name, entry.path, entry.filetype),
+                )?;
             }
-        }
-        true
+            Ok(())
+        })
+        .await
     }
 
-    /// This function is expensive, gets called when running filecache for the fist time
-    fn update_filecache_file_with_new(&self) -> Result<(), CurrentDirError> {
-        let tmp_file_path = Path::new("cache/cache.tmp");
-        let tempfile =
-            File::create(tmp_file_path).map_err(|_| CurrentDirError::CannotCreateFile)?;
+    async fn create_cache_table(&self) -> Result<usize, tokio_rusqlite::Error> {
+        self.database
+            .lock()
+            .await
+            .call(|conn| {
+                conn.execute(
+                    "CREATE TABLE file_cache (
+                        id          INTEGER PRIMARY KEY,
+                        name        TEXT NOT NULL,
+                        filetype    TEXT NOT NULL,
+                        path        TEXT NOT NULL
+                    )",
+                    [],
+                )
+            })
+            .await
+    }
 
-        let buf_writer = BufWriter::new(tempfile);
-        let mut csv_writer = csv::Writer::from_writer(buf_writer);
+    pub async fn backup_database_to_file(&self) -> Result<(), tokio_rusqlite::Error> {
+        let src = self.database.lock().await;
+        src.call(|memory_conn| {
+            let mut backup_conn = rusqlite::Connection::open(DATABASE_FILE)?;
+            let backup = backup::Backup::new(memory_conn, &mut backup_conn)?;
+            backup.run_to_completion(100, std::time::Duration::from_millis(0), None)?;
 
-        for entry in WalkDir::new("/").into_iter().filter_map(|e| e.ok()) {
-            let filedata = FileData::from(entry);
-            csv_writer
-                .serialize(filedata)
-                .map_err(|_| CurrentDirError::CannotReadDir {
-                    dir_name: self.file_location.to_string_lossy().to_string(),
-                })?
-        }
-        csv_writer
-            .flush()
-            .map_err(|_| CurrentDirError::CannotWriteToFile)?;
-        std::fs::rename(tmp_file_path, &self.file_location)
-            .map_err(|_| CurrentDirError::CannotCreateFile)?;
+            Ok(())
+        })
+        .await?;
+
         Ok(())
     }
 
-    pub fn update_filecache_file_from_memory(&self) -> Result<(), CurrentDirError> {
-        let tmp_file_path = Path::new("cache/cache.tmp");
-        let tempfile: File =
-            File::create(tmp_file_path).map_err(|_| CurrentDirError::CannotCreateFile)?;
-        let buf_writer = BufWriter::new(tempfile);
-        let mut csv_writer = csv::Writer::from_writer(buf_writer);
+    pub async fn read_database_from_backup(&self) -> Result<(), tokio_rusqlite::Error> {
+        let db = self.database.lock().await;
+        db.call(|memory_conn| {
+            let backup_conn = rusqlite::Connection::open(DATABASE_FILE)?;
+            let backup = backup::Backup::new(&backup_conn, memory_conn)?;
+            backup.run_to_completion(100, std::time::Duration::from_millis(0), None)?;
 
-        let cache = self.cache.lock().unwrap();
-        for element in cache.iter_all().flat_map(|(_, v)| v) {
-            csv_writer
-                .serialize(element)
-                .map_err(|_| CurrentDirError::CannotReadDir {
-                    dir_name: self.file_location.to_string_lossy().to_string(),
-                })?;
-        }
+            Ok(())
+        })
+        .await?;
 
-        std::fs::rename(tmp_file_path, &self.file_location)
-            .map_err(|_| CurrentDirError::CannotCreateFile)?;
         Ok(())
+    }
+
+    async fn clear_database(&self) -> Result<(), tokio_rusqlite::Error> {
+        let db = self.database.lock().await;
+
+        db.call(|conn| {
+            conn.execute("DROP TABLE file_cache", [])?;
+
+            Ok(())
+        })
+        .await
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::Path;
+
+    use crate::{filecache::CachedFile, FileData};
+
+    #[test]
+    fn cachedfile_from_filedata() {
+        let fd = FileData {
+            name: String::from("test"),
+            path: Path::new("/test/path").to_owned(),
+            filetype: crate::FileType::File,
+        };
+
+        assert_eq!(
+            CachedFile::from_filedata(fd, 1),
+            CachedFile {
+                id: 1,
+                name: String::from("test"),
+                path: String::from("/test/path"),
+                filetype: String::from("File"),
+            }
+        )
     }
 }
