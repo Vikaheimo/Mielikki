@@ -5,8 +5,10 @@ import { addData } from './stores/SearchStore';
 export type Filedata = {
     name: string;
     path: string;
-    filetype: string;
+    filetype: Filetype;
 };
+
+export type Filetype = "File" | "Folder" | "Link";
 
 export type FolderData = {
     name: string;
@@ -68,3 +70,10 @@ export const moveForwardDir = () => {
     const newDir = popForward();
     changeDirectory(newDir);
 };
+
+export const createFile = (filename: string, filetype: Filetype) => {
+    invoke('create_file', {filename, filetype}).then(() => {
+        updateCurrentDir()
+    })
+}
+
