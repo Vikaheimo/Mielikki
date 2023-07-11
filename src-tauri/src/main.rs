@@ -60,9 +60,23 @@ async fn find_file(
 }
 
 #[tauri::command]
-async fn create_file(state: tauri::State<'_, OuterCurrentDir>, filename: String, filetype: String) -> Result<(), CurrentDirError> {
+async fn create_file(
+    state: tauri::State<'_, OuterCurrentDir>,
+    filename: String,
+    filetype: String,
+) -> Result<(), CurrentDirError> {
     let state_guard = state.0.lock().await;
     state_guard.create_file(filename, filetype).await
+}
+
+#[tauri::command]
+async fn delete_file(
+    state: tauri::State<'_, OuterCurrentDir>,
+    filename: String,
+    filetype: String,
+) -> Result<(), CurrentDirError> {
+    let state_guard = state.0.lock().await;
+    state_guard.delete_file(filename, filetype).await
 }
 
 #[tokio::main]
@@ -77,7 +91,8 @@ async fn main() {
             move_to_parent_folder,
             current_dir_is_root,
             find_file,
-            create_file
+            create_file,
+            delete_file
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

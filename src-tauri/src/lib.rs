@@ -128,7 +128,13 @@ pub enum CurrentDirError {
     IsntUTF8,
     CannotSerialize,
     #[display(fmt = "{}", reason)]
-    CannotCreateFile {reason: String},
+    CannotCreateFile {
+        reason: String,
+    },
+    #[display(fmt = "{}", reason)]
+    CannotDeleteFile {
+        reason: String,
+    },
     CannotWriteToFile,
     SearchedFileNotFound,
 }
@@ -252,25 +258,51 @@ impl CurrentDir {
         Ok(data)
     }
 
-    pub async fn create_file(&self, filename: String, filetype: String) -> Result<(), CurrentDirError> {
-        let filetype_parsed = FileType::try_from(filetype.as_str());
+    pub async fn create_file(
+        &self,
+        filename: String,
+        filetype: String,
+    ) -> Result<(), CurrentDirError> {
+        let filetype_parsed = FileType::try_from(filetype.as_str())?;
         let mut path_to_file = self.path.clone();
         path_to_file.push(Path::new(&filename));
 
-        match filetype_parsed? {
-            FileType::Folder => tokio::fs::create_dir(path_to_file)
-                .await
-                .map_err(|err| CurrentDirError::CannotCreateFile {reason: err.to_string()}),
-            FileType::Link => Err(CurrentDirError::CannotCreateFile {reason: "Links aren't supported yet!".to_string()}),
+        match filetype_parsed {
+            FileType::Folder => tokio::fs::create_dir(path_to_file).await.map_err(|err| {
+                CurrentDirError::CannotCreateFile {
+                    reason: err.to_string(),
+                }
+            }),
+            FileType::Link => Err(CurrentDirError::CannotCreateFile {
+                reason: "Links aren't supported yet!".to_string(),
+            }),
             FileType::File => {
-                tokio::fs::File::create(path_to_file)
-                    .await
-                    .map_err(|err| {
-                        CurrentDirError::CannotCreateFile {reason: err.to_string()}
-                    })?;
+                tokio::fs::File::create(path_to_file).await.map_err(|err| {
+                    CurrentDirError::CannotCreateFile {
+                        reason: err.to_string(),
+                    }
+                })?;
                 Ok(())
             }
         }
+    }
+
+    pub async fn delete_file(
+        &self,
+        filename: String,
+        filetype: String,
+    ) -> Result<(), CurrentDirError> {
+        let filetype_parsed = FileType::try_from(filetype.as_str())?;
+        let mut path_to_file = self.path.clone();
+        path_to_file.push(Path::new(&filename));
+
+        match filetype_parsed {
+            FileType::Folder => tokio::fs::remove_dir(path_to_file).await,
+            _ => tokio::fs::remove_file(path_to_file).await,
+        }
+        .map_err(|err| CurrentDirError::CannotDeleteFile {
+            reason: err.to_string(),
+        })
     }
 }
 
