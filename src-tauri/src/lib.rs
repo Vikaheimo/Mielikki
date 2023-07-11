@@ -250,6 +250,25 @@ impl CurrentDir {
         data.sort_unstable();
         Ok(data)
     }
+
+    pub async fn create_file(&self, filename: String, filetype: String) -> Result<(), CurrentDirError> {
+        let filetype_parsed = FileType::try_from(filetype.as_str())?;
+        let mut path_to_file = self.path.clone();
+        path_to_file.push(Path::new(&filename));
+
+        match filetype_parsed {
+            FileType::Folder => tokio::fs::create_dir(path_to_file)
+                .await
+                .map_err(|_| CurrentDirError::CannotCreateFile),
+            FileType::Link => Err(CurrentDirError::CannotCreateFile),
+            FileType::File => {
+                tokio::fs::File::create(path_to_file)
+                    .await
+                    .map_err(|_| CurrentDirError::CannotCreateFile)?;
+                Ok(())
+            }
+        }
+    }
 }
 
 #[cfg(test)]
