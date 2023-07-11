@@ -2,7 +2,7 @@
     import { SvelteComponent, onDestroy, onMount } from 'svelte';
     import FileDisplay from '$lib/components/FileDisplay.svelte';
     import type { Filedata } from '$lib/DirFunctions';
-    import { changeDirectory, updateCurrentDir } from '$lib/DirFunctions';
+    import { changeDirectory, createFile, updateCurrentDir } from '$lib/DirFunctions';
     import DirectoryStore from '$lib/stores/DirectoryStore';
     import RightClickMenu from '$lib/components/RightClickMenu.svelte';
     import type { MenuItem } from '$lib/components/Types';
@@ -25,12 +25,12 @@
         {
             icon: 'fa-sharp fa-solid fa-folder-plus',
             text: 'New Folder',
-            onClick: () => console.log('Add folder')
+            onClick: () => createFile("test", "Folder")
         },
         {
             icon: 'fa-solid fa-file-circle-plus',
             text: 'New File',
-            onClick: () => console.log('Add file')
+            onClick: () => createFile("test", "File")
         }
     ];
     let rightClickMenu: SvelteComponent;
